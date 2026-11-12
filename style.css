@@ -151,6 +151,92 @@ canvas {
   color: var(--cyan);
 }
 
+/* Jauge d'Éveil Anime 覚醒 */
+.hud-awakening-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  border-radius: 16px;
+  padding: 6px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.hud-awakening-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 245, 212, 0.7);
+}
+
+.hud-awakening-card.ready {
+  border-color: #ffd23f;
+  background: linear-gradient(135deg, rgba(20, 24, 50, 0.95), rgba(45, 226, 230, 0.25));
+  box-shadow: 0 0 20px rgba(255, 210, 63, 0.6), 0 0 35px rgba(0, 245, 212, 0.4);
+  animation: animePulse 0.8s infinite alternate ease-in-out;
+}
+
+.hud-awakening-card.active {
+  border-color: #ff007f;
+  background: linear-gradient(135deg, rgba(40, 10, 40, 0.95), rgba(255, 0, 127, 0.35));
+  box-shadow: 0 0 25px rgba(255, 0, 127, 0.8), 0 0 45px rgba(255, 210, 63, 0.6);
+  animation: animeOverdrive 0.3s infinite alternate ease-in-out;
+}
+
+.awk-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.awk-kanji {
+  color: #00f5d4;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-weight: 900;
+  text-shadow: 0 0 8px #00f5d4;
+}
+
+.hud-awakening-card.ready .awk-kanji {
+  color: #ffd23f;
+  text-shadow: 0 0 12px #ffd23f;
+}
+
+.awk-track {
+  width: 110px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.awk-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #00f5d4, #ffd23f);
+  border-radius: 99px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px #00f5d4;
+}
+
+.hud-awakening-card.ready .awk-fill {
+  background: linear-gradient(90deg, #ffd23f, #ff007f);
+  box-shadow: 0 0 14px #ffd23f;
+}
+
 /* Jauges de Power-Ups */
 #pu {
   position: fixed;
@@ -199,7 +285,7 @@ canvas {
   border-radius: 99px;
 }
 
-/* Boutons d'action flottants (Pause, Son, Musique, Tactile, Hoverboard) */
+/* Boutons d'action flottants (Pause, Son, Musique, Tactile, Hoverboard, Éveil) */
 .ib {
   position: fixed;
   right: 16px;
@@ -258,6 +344,76 @@ canvas {
   font-weight: 900;
   padding: 2px 7px;
   border-radius: 99px;
+}
+
+#b-awakening {
+  top: auto;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  right: 160px;
+  width: auto;
+  padding: 0 16px;
+  border-radius: 99px;
+  border-color: rgba(0, 245, 212, 0.5);
+  color: #00f5d4;
+  font-weight: 900;
+  font-size: 14px;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(13, 17, 38, 0.92), rgba(20, 50, 60, 0.92));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 245, 212, 0.35);
+  transition: all 0.2s ease;
+}
+
+#b-awakening.ready {
+  border-color: #ffd23f;
+  color: #ffd23f;
+  background: linear-gradient(135deg, rgba(30, 25, 10, 0.95), rgba(70, 50, 10, 0.95));
+  box-shadow: 0 0 22px rgba(255, 210, 63, 0.8);
+  animation: animePulse 0.8s infinite alternate ease-in-out;
+}
+
+#b-awakening.active {
+  border-color: #ff007f;
+  color: #ff007f;
+  background: linear-gradient(135deg, rgba(40, 10, 30, 0.95), rgba(80, 15, 50, 0.95));
+  box-shadow: 0 0 25px rgba(255, 0, 127, 0.9);
+  animation: animeOverdrive 0.3s infinite alternate ease-in-out;
+}
+
+.awk-kanji-badge {
+  background: rgba(0, 245, 212, 0.2);
+  color: #00f5d4;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 245, 212, 0.4);
+}
+
+.ready .awk-kanji-badge {
+  background: #ffd23f;
+  color: #0b0d1f;
+  border-color: #ffd23f;
+}
+
+.t-btn-awk {
+  background: linear-gradient(135deg, rgba(20, 35, 60, 0.9), rgba(0, 245, 212, 0.35));
+  border-color: #00f5d4;
+  color: #00f5d4;
+  font-size: 13px;
+  font-weight: 900;
+  width: auto;
+  border-radius: 99px;
+  padding: 0 16px;
+}
+
+@keyframes animePulse {
+  from { transform: scale(1); filter: brightness(1); }
+  to   { transform: scale(1.05); filter: brightness(1.25); }
+}
+
+@keyframes animeOverdrive {
+  from { transform: scale(1) rotate(-1deg); filter: brightness(1.1); }
+  to   { transform: scale(1.06) rotate(1deg); filter: brightness(1.4); }
 }
 
 /* ---------------- COMMANDES TACTILES VIRTUELLES ---------------- */
@@ -1081,5 +1237,25 @@ button.m:disabled {
 .gamepad-status b {
   font-size: 13px;
   color: var(--cyan);
+}
+
+@media (max-width: 600px) {
+  #b-awakening {
+    right: 140px;
+    padding: 0 12px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .hud-awakening-card {
+    padding: 4px 8px;
+    border-radius: 12px;
+  }
+  .awk-track {
+    width: 70px;
+    height: 6px;
+  }
+  .awk-label {
+    font-size: 10px;
+  }
 }
 

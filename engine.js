@@ -100,7 +100,7 @@
         grounded: true, coyote: 0, rolling: false, rollT: 0,
         height: c.standHeight, state: 'run'
       };
-      this.timers = { invuln: 0, chaser: 0, stumble: 0 };
+      this.timers = { invuln: 0, chaser: 0, stumble: 0, awakening: 0 };
       this.powerups = { magnet: 0, sneakers: 0, multiplier: 0, jetpack: 0, hoverboard: 0 };
       this.obstacles = [];
       this.collectibles = [];
@@ -112,6 +112,7 @@
       this.baseMultiplier = this.cfg.baseMultiplier || 1;
       this.mysteryBoxes = 0;
       this.lastMilestone = 0;
+      this.awakening = 0; // Jauge d'Éveil Anime 0-100
       this.stats = { jumps: 0, rolls: 0, stumbles: 0, powerups: 0, laneChanges: 0 };
       this._generate();
       this._seedStartCoins();
@@ -127,6 +128,24 @@
       const key = kind + 'Duration';
       if (this.cfg[key] != null) this.cfg[key] = Math.max(2, dur);
       return this;
+    }
+
+    addAwakening(amt = 5) {
+      if (this.timers.awakening > 0) return;
+      this.awakening = Math.min(100, (this.awakening || 0) + amt);
+      if (this.awakening >= 100) this._emit('awakeningReady', {});
+    }
+
+    activateAwakening() {
+      if (this.state !== 'running' || this.awakening < 100 || this.timers.awakening > 0) return false;
+      this.awakening = 0;
+      this.timers.awakening = 8.0;
+      this.timers.invuln = Math.max(this.timers.invuln, 8.5);
+      this.speedMul = 1.35;
+      this.powerups.magnet = Math.max(this.powerups.magnet, 8.0);
+      this.powerups.multiplier = Math.max(this.powerups.multiplier, 8.0);
+      this._emit('awakeningStart', { duration: 8.0 });
+      return true;
     }
 
     headstart(dist = 400, jet = false) {
@@ -244,6 +263,10 @@
       T.invuln = Math.max(0, T.invuln - dt);
       T.chaser = Math.max(0, T.chaser - dt);
       T.stumble = Math.max(0, T.stumble - dt);
+      if (T.awakening > 0) {
+        T.awakening = Math.max(0, T.awakening - dt);
+        if (T.awakening === 0) this._emit('awakeningEnd', {});
+      }
       for (const k of POWERUPS) {
         if (P[k] > 0) {
           P[k] = Math.max(0, P[k] - dt);
@@ -265,6 +288,7 @@
         if (a === 'left' || a === 'right') this._changeLane(a === 'left' ? -1 : 1);
         else if (a === 'jump') this.jumpBuf = this.cfg.inputBuffer;
         else if (a === 'roll') this._roll();
+        else if (a === 'awakening') this.activateAwakening();
       }
       if (this.powerups.jetpack > 0) { this.jumpBuf = 0; this.rollBuf = 0; return; }
       if (this.jumpBuf > 0 && (p.grounded || p.coyote > 0)) { this.jumpBuf = 0; this._jump(); }
@@ -276,6 +300,7 @@
       if (nl === p.lane) return;
       p.prevLane = p.lane; p.lane = nl;
       this.stats.laneChanges++;
+      this.addAwakening(1);
       this._emit('laneChange', { lane: nl, dir });
     }
 
@@ -284,6 +309,7 @@
       p.vy = this.powerups.sneakers > 0 ? c.sneakersJumpVelocity : c.jumpVelocity;
       p.grounded = false; p.coyote = 0; p.rolling = false; p.rollT = 0;
       this.stats.jumps++;
+      this.addAwakening(2);
       this._emit('jump', { sneakers: this.powerups.sneakers > 0 });
     }
 
@@ -297,6 +323,7 @@
       const p = this.player;
       p.rolling = true; p.rollT = this.cfg.rollDuration;
       this.stats.rolls++;
+      this.addAwakening(2);
       this._emit('roll', {});
     }
 
@@ -341,7 +368,21 @@
       const p = this.player, c = this.cfg;
       if (this.powerups.jetpack > 0) return;
       for (const ob of this.obstacles) {
-        if (ob.ghost || !this._overlap(ob, p)) continue;
+        if (ob.ghost) continue;
+
+        // Frôlement héroïque (Near-Miss) : esquive au millimètre d'un obstacle ou train
+        if (!ob.nearMissed && p.prevZ <= ob.z + 0.3 && p.z > ob.z + 0.3) {
+          const dx = Math.abs(p.x - ob.x);
+          const colDist = ob.halfWidth + c.playerHalfWidth;
+          if (dx >= colDist && dx <= colDist + 1.25 && p.y < (ob.height || 2.5)) {
+            ob.nearMissed = true;
+            this.score += 200 * (this.powerups.multiplier > 0 ? 2 : 1);
+            this.addAwakening(6);
+            this._emit('nearMiss', { obstacle: ob, x: p.x, y: p.y, z: p.z });
+          }
+        }
+
+        if (!this._overlap(ob, p)) continue;
         if (ob.type === 'high') {
           if (p.y < ob.top && p.y + p.height > ob.bottom) this._hit(ob, 'frontal', 0);
           continue;
@@ -356,6 +397,11 @@
 
     _hit(ob, kind, surf) {
       const p = this.player, T = this.timers, c = this.cfg;
+      if (T.awakening > 0) {
+        ob.ghost = true;
+        this._emit('obstacleSmash', { obstacle: ob, kind });
+        return;
+      }
       if (kind === 'side') {
         if (p.lane !== p.prevLane) p.lane = p.prevLane;
         // Repousser le joueur pour éviter l'encastrement latéral
@@ -413,6 +459,7 @@
             if (Math.hypot(it.x - p.x, it.y - cy, it.z - p.z) < 2.0 || Math.abs(dzm) < 1.3) {
               it.taken = true;
               this.coins++;
+              this.addAwakening(3);
               this._emit('coin', { x: it.x, y: it.y, z: it.z, total: this.coins });
               continue;
             }
@@ -422,6 +469,7 @@
           it.taken = true;
           if (it.type === 'coin') {
             this.coins++;
+            this.addAwakening(3);
             this._emit('coin', { x: it.x, y: it.y, z: it.z, total: this.coins });
           } else if (it.type === 'mystery_box') {
             this.mysteryBoxes = (this.mysteryBoxes || 0) + 1;
@@ -600,6 +648,9 @@
         score: Math.floor(this.score) + this.coins * c.coinScore,
         multiplier: (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1),
         baseMultiplier: this.baseMultiplier || 1,
+        awakening: this.awakening || 0,
+        awakeningActive: (this.timers.awakening || 0) > 0,
+        awakeningTimer: this.timers.awakening || 0,
         player: { x: p.x, y: p.y, z: p.z, lane: p.lane, height: p.height, state: p.state,
                   rolling: p.rolling, grounded: p.grounded },
         invulnerable: this.timers.invuln > 0,
@@ -621,7 +672,8 @@
       if (!target) return () => {};
       const map = {
         ArrowLeft: 'left', a: 'left', q: 'left', ArrowRight: 'right', d: 'right',
-        ArrowUp: 'jump', w: 'jump', z: 'jump', ' ': 'jump', ArrowDown: 'roll', s: 'roll'
+        ArrowUp: 'jump', w: 'jump', z: 'jump', ' ': 'jump', ArrowDown: 'roll', s: 'roll',
+        e: 'awakening', E: 'awakening'
       };
       const fn = e => {
         const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, a = map[k];

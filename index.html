@@ -24,6 +24,13 @@
       </div>
       <div id="ds">0 m</div>
     </div>
+
+    <!-- Jauge d'Éveil Anime 覚醒 -->
+    <div id="awakening-card" class="hud-awakening-card" title="Mode Éveil Anime (Touche E / Cliquer)">
+      <div class="awk-label"><span class="awk-kanji">⚡ 覚醒</span> <span id="awakening-text">ÉVEIL 0%</span></div>
+      <div class="awk-track"><div id="awakening-gauge-fill" class="awk-fill"></div></div>
+    </div>
+
     <div class="hud-card hud-right">
       <div id="cn">🪙 0</div>
       <div class="hud-sub-counters">
@@ -48,6 +55,11 @@
     <span id="bh-label">Skate</span>
     <span class="bh-badge" id="bh-badge">3</span>
   </button>
+  <button class="ib" id="b-awakening" aria-label="Éveil Anime" title="Éveil Anime (E / Cliquer)">
+    <span class="awk-icon">⚡</span>
+    <span id="b-awakening-label">Éveil</span>
+    <span class="awk-kanji-badge">覚醒</span>
+  </button>
 
   <!-- Commandes Tactiles Virtuelles (Mobile & Tablettes) -->
   <div id="touch-controls" class="touch-overlay hide">
@@ -56,6 +68,7 @@
       <button class="t-btn" id="t-right" aria-label="Droite">▶</button>
     </div>
     <div class="touch-side touch-right">
+      <button class="t-btn t-btn-awk" id="t-awk" aria-label="Éveil Anime">⚡ 覚醒</button>
       <button class="t-btn" id="t-up" aria-label="Sauter">▲</button>
       <button class="t-btn" id="t-down" aria-label="Roulade">▼</button>
     </div>
@@ -94,6 +107,7 @@
         <div class="key-row"><strong>↑ / Z / Espace</strong>Sauter (Coyote)</div>
         <div class="key-row"><strong>↓ / S</strong>Roulade / Fast-Fall</div>
         <div class="key-row"><strong>H / 2x Tap</strong>Hoverboard 🛹</div>
+        <div class="key-row"><strong>E / Bouton</strong>Mode Éveil ⚡ (覚醒)</div>
       </div>
     </div>
   </div>

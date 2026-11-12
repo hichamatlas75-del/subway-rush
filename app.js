@@ -30,9 +30,9 @@ let W, H, F, HOR,
     best = ld('sr_best', 0),
     wallet = ld('sr_wallet', 200),
     boardsStock = ld('sr_boards_stock', 3),
-    unlockedChars = ld('sr_chars', ['jake']),
+    unlockedChars = ld('sr_chars', ['ren']),
     unlockedBoards = ld('sr_boards', ['classic']),
-    activeChar = ld('sr_active_char', 'jake'),
+    activeChar = ld('sr_active_char', 'ren'),
     activeBoard = ld('sr_active_board', 'classic'),
     baseMult = ld('sr_base_mult', 1),
     activeMissions = ld('sr_missions', null),
@@ -49,8 +49,16 @@ let W, H, F, HOR,
     pendingHeadstart = null,
     AC, sfxGain, bgmGain, bgmInterval,
     gamepadConnected = false,
-    gpLastState = { left: false, right: false, up: false, down: false, btnA: false, btnB: false, btnH: false, btnP: false },
+    gpLastState = { left: false, right: false, up: false, down: false, btnA: false, btnB: false, btnH: false, btnP: false, btnY: false },
     last = 0, lastTap = 0, lastTapX = 0, lastTapY = 0;
+
+// Migration transparente des anciens profils vers les Héros Anime Japonais (Ren, Hikari, Kuro, Ryu)
+const LEGACY_CHAR_MAP = { jake: 'ren', tricky: 'hikari', ninja: 'kuro', lucy: 'ryu' };
+if (LEGACY_CHAR_MAP[activeChar]) activeChar = LEGACY_CHAR_MAP[activeChar];
+unlockedChars = (unlockedChars || []).map(c => LEGACY_CHAR_MAP[c] || c);
+if (!unlockedChars.includes('ren')) unlockedChars.unshift('ren');
+sv('sr_active_char', activeChar);
+sv('sr_chars', unlockedChars);
 
 /* ---------- Initialisation du Moteur ---------- */
 const G = new SubwayEngine({ baseMultiplier: baseMult }),
@@ -432,11 +440,128 @@ function item(c) {
   cx.globalAlpha = 1;
 }
 
-/* ---------- 4 PERSONNAGES CEL-SHADED : JAKE, TRICKY, NINJA & LUCY ---------- */
+/* ---------- HÉROS 3D STYLE ANIME JAPONAIS & GUARDIAN CYBER ---------- */
+// Archetypes Anime : Ren (蓮 - Cyber Shinobi), Hikari (光 - Anime Valkyrie), Kuro (黒 - Shadow Ninja), Ryu (竜 - Flame Ronin)
+const ANIME_HEROES = {
+  ren: {
+    name: 'Ren 蓮',
+    kanji: '疾',
+    hairBase: '#0f172a',
+    hairShadow: '#020617',
+    hairHighlight: '#00f5d4',
+    hairBand: '#1e293b',
+    plate: '#e2e8f0',
+    ribbon: '#00f5d4',
+    skin: '#fed7aa',
+    skinShadow: '#fbcfe8',
+    eyes: '#00f5d4',
+    scarf: '#00f5d4',
+    scarfTrim: '#05c46b',
+    jacket: '#0f172a',
+    jacketInner: '#1e293b',
+    jacketAccent: '#2de2e6',
+    katanaScabbard: '#0f172a',
+    katanaGlow: '#00f5d4',
+    katanaHilt: '#1e293b',
+    katanaGuard: '#38bdf8',
+    pants: '#1e293b',
+    pantsStripe: '#00f5d4',
+    sneaker: '#0f172a',
+    sole: '#00f5d4',
+    aura: '#00f5d4',
+    auraSec: '#ffd23f'
+  },
+  hikari: {
+    name: 'Hikari 光',
+    kanji: '光',
+    hairBase: '#fef08a',
+    hairShadow: '#eab308',
+    hairHighlight: '#ff007f',
+    hairBand: '#ff007f',
+    plate: '#ffffff',
+    ribbon: '#ff007f',
+    skin: '#ffedd5',
+    skinShadow: '#fecdd3',
+    eyes: '#ff007f',
+    scarf: '#ffffff',
+    scarfTrim: '#ff007f',
+    jacket: '#ffffff',
+    jacketInner: '#ff007f',
+    jacketAccent: '#ffd23f',
+    katanaScabbard: '#ffffff',
+    katanaGlow: '#ff007f',
+    katanaHilt: '#ff007f',
+    katanaGuard: '#ffd23f',
+    pants: '#f8fafc',
+    pantsStripe: '#ff007f',
+    sneaker: '#ffffff',
+    sole: '#ff007f',
+    aura: '#ff007f',
+    auraSec: '#ffd23f'
+  },
+  kuro: {
+    name: 'Kuro 黒',
+    kanji: '影',
+    hairBase: '#09090b',
+    hairShadow: '#000000',
+    hairHighlight: '#dc2626',
+    hairBand: '#18181b',
+    plate: '#71717a',
+    ribbon: '#dc2626',
+    skin: '#fed7aa',
+    skinShadow: '#d4d4d8',
+    eyes: '#ef4444',
+    scarf: '#991b1b',
+    scarfTrim: '#ef4444',
+    jacket: '#09090b',
+    jacketInner: '#18181b',
+    jacketAccent: '#dc2626',
+    katanaScabbard: '#18181b',
+    katanaGlow: '#ef4444',
+    katanaHilt: '#000000',
+    katanaGuard: '#991b1b',
+    pants: '#09090b',
+    pantsStripe: '#7f1d1d',
+    sneaker: '#18181b',
+    sole: '#ef4444',
+    aura: '#9333ea',
+    auraSec: '#dc2626'
+  },
+  ryu: {
+    name: 'Ryu 竜',
+    kanji: '竜',
+    hairBase: '#dc2626',
+    hairShadow: '#991b1b',
+    hairHighlight: '#fbbf24',
+    hairBand: '#7f1d1d',
+    plate: '#fbbf24',
+    ribbon: '#f59e0b',
+    skin: '#fed7aa',
+    skinShadow: '#fca5a5',
+    eyes: '#f59e0b',
+    scarf: '#ea580c',
+    scarfTrim: '#fbbf24',
+    jacket: '#7f1d1d',
+    jacketInner: '#ea580c',
+    jacketAccent: '#fbbf24',
+    katanaScabbard: '#450a0a',
+    katanaGlow: '#f59e0b',
+    katanaHilt: '#7f1d1d',
+    katanaGuard: '#fbbf24',
+    pants: '#1c1917',
+    pantsStripe: '#ea580c',
+    sneaker: '#292524',
+    sole: '#f59e0b',
+    aura: '#f97316',
+    auraSec: '#facc15'
+  }
+};
+
 function runner(x, y, z, pal, o) {
   const q = pr(x, y, z), s = q[2];
   const isGuard = pal.guard === true;
-  const charSkin = isGuard ? 'guard' : (activeChar || 'jake');
+  const heroKey = isGuard ? 'guard' : (ANIME_HEROES[activeChar] ? activeChar : { jake: 'ren', tricky: 'hikari', ninja: 'kuro', lucy: 'ryu' }[activeChar] || 'ren');
+  const hero = ANIME_HEROES[heroKey] || ANIME_HEROES.ren;
   const boardSkin = activeBoard || 'classic';
 
   const cyc = tt * 19;
@@ -450,10 +575,58 @@ function runner(x, y, z, pal, o) {
 
   cx.lineJoin = 'round';
   cx.lineCap = 'round';
-  cx.strokeStyle = '#141824';
+  cx.strokeStyle = '#0b0f19';
   cx.lineWidth = Math.max(1.4, 0.034 * s);
 
-  // 1. HOVERBOARD HD
+  // 1. AURA D'ÉVEIL ANIME (Mode Éveil / Overdrive ⚡ 覚醒)
+  if (o.awakening && !isGuard) {
+    cx.save();
+    // Halo radiale flamboyant
+    const aGrad = cx.createRadialGradient(0, -0.9 * s, 0.15 * s, 0, -0.9 * s, 1.45 * s);
+    aGrad.addColorStop(0, hero.auraSec);
+    aGrad.addColorStop(0.35, hero.aura);
+    aGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    cx.fillStyle = aGrad;
+    cx.beginPath();
+    cx.arc(0, -0.9 * s, 1.45 * s, 0, Math.PI * 2);
+    cx.fill();
+
+    // Flammes d'énergie anime cel-shaded ondulantes
+    cx.fillStyle = hero.aura;
+    cx.beginPath();
+    const auraCount = 12;
+    for (let i = 0; i <= auraCount; i++) {
+      const ang = (i / auraCount) * Math.PI * 2;
+      const rDist = (1.08 + Math.sin(tt * 24 + i * 1.5) * 0.22 + Math.cos(tt * 18 - i * 0.8) * 0.12) * s;
+      const ax = Math.cos(ang) * rDist;
+      const ay = -0.9 * s + Math.sin(ang) * rDist * 1.1;
+      if (i === 0) cx.moveTo(ax, ay); else cx.lineTo(ax, ay);
+    }
+    cx.closePath();
+    cx.globalAlpha = 0.55;
+    cx.fill();
+    cx.globalAlpha = 1;
+
+    // Arcs électriques / éclairs anime
+    cx.strokeStyle = '#ffffff';
+    cx.lineWidth = Math.max(1.8, 0.038 * s);
+    for (let k = 0; k < 4; k++) {
+      const startA = (k / 4) * Math.PI * 2 + tt * 9;
+      let ex = Math.cos(startA) * 0.45 * s;
+      let ey = -0.9 * s + Math.sin(startA) * 0.75 * s;
+      cx.beginPath();
+      cx.moveTo(ex, ey);
+      for (let j = 0; j < 3; j++) {
+        ex += (Math.sin(tt * 30 + k * 2 + j) * 0.25) * s;
+        ey += (Math.cos(tt * 25 + k * 3 + j) * 0.25) * s;
+        cx.lineTo(ex, ey);
+      }
+      cx.stroke();
+    }
+    cx.restore();
+  }
+
+  // 2. HOVERBOARD HD
   if (o.board) {
     cx.save();
     cx.rotate(Math.sin(tt * 9) * 0.06);
@@ -481,20 +654,27 @@ function runner(x, y, z, pal, o) {
     cx.restore();
   }
 
-  // 2. ROULADE ACROBATIQUE
+  // 3. ROULADE ACROBATIQUE NINJA (Spin acrobatique avec disque de coupe)
   if (o.roll) {
     cx.save();
-    cx.translate(0, -0.45 * s);
-    cx.rotate(tt * 24);
+    cx.translate(0, -0.48 * s);
+    cx.rotate(tt * 26);
 
-    const rCol = charSkin === 'tricky' ? '#2de2e6' : charSkin === 'ninja' ? '#1e293b' : charSkin === 'lucy' ? '#ff007f' : '#e63946';
-    cx.fillStyle = rCol;
-    cx.beginPath(); cx.arc(0, 0, 0.38 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    cx.fillStyle = '#f8f9fa';
-    cx.beginPath(); cx.arc(0, -0.12 * s, 0.24 * s, Math.PI, 0); cx.fill(); cx.stroke();
+    // Orbe de roulade
+    cx.fillStyle = isGuard ? '#1b2a49' : hero.jacket;
+    cx.beginPath(); cx.arc(0, 0, 0.42 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
+
+    // Lame circulaire d'énergie tranchante
+    cx.strokeStyle = isGuard ? '#ffd23f' : hero.katanaGlow;
+    cx.lineWidth = 0.065 * s;
+    cx.beginPath(); cx.arc(0, 0, 0.48 * s, 0, Math.PI * 1.5); cx.stroke();
+
+    // Écharpe enroulée dans la rotation
+    cx.fillStyle = isGuard ? '#ffd23f' : hero.scarf;
+    cx.beginPath(); cx.arc(0, -0.08 * s, 0.28 * s, Math.PI, 0); cx.fill(); cx.stroke();
 
     for (const k of [-1, 1]) {
-      rr(k * 0.22 * s, 0.22 * s, 0.18 * s, 0.12 * s, 0.04 * s, '#ffffff', '#111');
+      rr(k * 0.22 * s, 0.22 * s, 0.18 * s, 0.12 * s, 0.04 * s, isGuard ? '#111' : hero.sneaker, '#0b0f19');
     }
     cx.restore();
     cx.restore();
@@ -503,7 +683,103 @@ function runner(x, y, z, pal, o) {
 
   cx.rotate(o.tilt || 0);
 
-  // 3. JAMBES EN PERSPECTIVE
+  // 4. ÉCHARPE ANIME FLOTTANTE (Dynamique 4 segments au vent)
+  if (!isGuard) {
+    cx.save();
+    const scarfBaseY = -1.52 * s;
+    const scarfTailX = -(o.tilt || 0) * 0.35 * s;
+    const scarfSegs = 4;
+    const ptsLeft = [];
+    const ptsRight = [];
+
+    for (let i = 0; i <= scarfSegs; i++) {
+      const prog = i / scarfSegs;
+      const wave = Math.sin(tt * 18 - i * 0.95) * (0.05 + prog * 0.18) * s;
+      const sway = Math.cos(tt * 14 - i * 0.75) * (0.04 + prog * 0.12) * s;
+      const py = scarfBaseY + (prog * 0.88 * s) + (prog * prog * 0.16 * s);
+      const px = scarfTailX + wave + (sway * 0.5);
+      const halfW = (0.15 - prog * 0.05) * s;
+      ptsLeft.push({ x: px - halfW, y: py });
+      ptsRight.push({ x: px + halfW, y: py });
+    }
+
+    // Pan principal de l'écharpe
+    cx.fillStyle = hero.scarf;
+    cx.strokeStyle = '#0b0f19';
+    cx.lineWidth = Math.max(1.3, 0.03 * s);
+    cx.beginPath();
+    cx.moveTo(ptsLeft[0].x, ptsLeft[0].y);
+    for (let i = 1; i <= scarfSegs; i++) cx.lineTo(ptsLeft[i].x, ptsLeft[i].y);
+    for (let i = scarfSegs; i >= 0; i--) cx.lineTo(ptsRight[i].x, ptsRight[i].y);
+    cx.closePath();
+    cx.fill();
+    cx.stroke();
+
+    // Bande centrale cel-shaded contrastée
+    cx.fillStyle = hero.scarfTrim;
+    cx.beginPath();
+    cx.moveTo(ptsLeft[0].x + 0.04 * s, ptsLeft[0].y);
+    for (let i = 1; i <= scarfSegs; i++) cx.lineTo(ptsLeft[i].x + 0.04 * s, ptsLeft[i].y);
+    for (let i = scarfSegs; i >= 0; i--) cx.lineTo(ptsLeft[i].x + 0.07 * s, ptsRight[i].y);
+    cx.closePath();
+    cx.fill();
+
+    // Deuxième pan d'écharpe flottant en décalé
+    cx.beginPath();
+    for (let i = 1; i <= scarfSegs; i++) {
+      const prog = i / scarfSegs;
+      const subWave = Math.sin(tt * 18 - i * 0.95 + 1.2) * (0.06 + prog * 0.15) * s;
+      const py = scarfBaseY + (prog * 0.74 * s);
+      const px = scarfTailX + subWave + 0.07 * s;
+      if (i === 1) cx.moveTo(px, py); else cx.lineTo(px, py);
+    }
+    cx.strokeStyle = hero.scarf;
+    cx.lineWidth = 0.07 * s;
+    cx.stroke();
+    cx.restore();
+  }
+
+  // 5. CYBER-KATANA SUR LE DOS (サイバー刀)
+  if (!isGuard) {
+    cx.save();
+    cx.translate(0.04 * s, -1.26 * s);
+    cx.rotate(0.68 + (o.tilt || 0) * 0.25);
+
+    // Fourreau (Saya) métallique noir mat
+    const sayaL = 0.96 * s;
+    const sayaW = 0.082 * s;
+    rr(-sayaW / 2, -sayaL * 0.45, sayaW, sayaL, 0.024 * s, hero.katanaScabbard, '#0b0f19');
+
+    // Ligne de conduit d'énergie néon sur le fourreau
+    cx.fillStyle = hero.katanaGlow;
+    cx.fillRect(-0.012 * s, -sayaL * 0.42, 0.024 * s, sayaL * 0.94);
+
+    // Garde (Tsuba) mecha angulaire
+    rr(-0.09 * s, -sayaL * 0.45 - 0.03 * s, 0.18 * s, 0.045 * s, 0.015 * s, hero.katanaGuard, '#0b0f19');
+
+    // Poignée (Tsuka) avec tressage traditionnel losange (Tsukamaki)
+    const tsukaL = 0.35 * s;
+    rr(-0.04 * s, -sayaL * 0.45 - 0.03 * s - tsukaL, 0.08 * s, tsukaL, 0.015 * s, hero.katanaHilt, '#0b0f19');
+
+    // Losanges de tressage tsukamaki
+    cx.fillStyle = hero.katanaGlow;
+    for (let rz = 0; rz < 3; rz++) {
+      const rzy = -sayaL * 0.45 - 0.06 * s - rz * 0.095 * s;
+      cx.beginPath();
+      cx.moveTo(0, rzy - 0.022 * s);
+      cx.lineTo(0.022 * s, rzy);
+      cx.lineTo(0, rzy + 0.022 * s);
+      cx.lineTo(-0.022 * s, rzy);
+      cx.closePath();
+      cx.fill();
+    }
+    // Pommeau (Kashira)
+    cx.fillStyle = hero.katanaGuard;
+    cx.fillRect(-0.045 * s, -sayaL * 0.45 - 0.03 * s - tsukaL - 0.022 * s, 0.09 * s, 0.022 * s);
+    cx.restore();
+  }
+
+  // 6. JAMBES & BASKETS MECHA ANIME (Perspective & Stride)
   const legs = [
     { side: -1, phase: sw, lift: Math.max(0, -cw) },
     { side: 1,  phase: -sw, lift: Math.max(0, cw) }
@@ -511,44 +787,60 @@ function runner(x, y, z, pal, o) {
 
   for (const lg of legs) {
     cx.save();
-    const hipX = lg.side * 0.14 * s, hipY = -0.78 * s;
+    const hipX = lg.side * 0.14 * s, hipY = -0.76 * s;
     const strideY = lg.phase * 0.18 * s - lg.lift * 0.22 * s;
     const scaleLeg = 1 + lg.phase * 0.15;
 
     cx.translate(hipX, hipY);
-    cx.rotate(lg.phase * 0.28);
-
-    const pantsCol = isGuard ? '#162447'
-      : charSkin === 'tricky' ? '#264653'
-      : charSkin === 'ninja' ? '#0f172a'
-      : charSkin === 'lucy' ? '#111111'
-      : '#1d3557';
+    cx.rotate(lg.phase * 0.30);
 
     const legH = (0.58 * s) + strideY * 0.5;
-    rr(-0.095 * s, 0, 0.19 * s, legH, 0.08 * s, pantsCol, '#141824');
+    // Pantalon techwear / shinobi
+    rr(-0.095 * s, 0, 0.19 * s, legH, 0.07 * s, isGuard ? '#162447' : hero.pants, '#0b0f19');
+
+    if (!isGuard) {
+      // Bande néon / armure genouillère
+      cx.fillStyle = hero.pantsStripe;
+      cx.fillRect(-0.075 * s, legH * 0.35, 0.15 * s, 0.05 * s);
+      // Genouillère mecha angulaire
+      rr(-0.085 * s, legH * 0.42, 0.17 * s, 0.14 * s, 0.04 * s, hero.jacketInner, '#0b0f19');
+    }
 
     cx.translate(0, legH - 0.02 * s);
     cx.scale(scaleLeg * (o.sn ? 1.35 : 1), scaleLeg * (o.sn ? 1.35 : 1));
 
-    const snCol = o.sn ? '#05c46b'
-      : isGuard ? '#111111'
-      : charSkin === 'tricky' ? '#e76f51'
-      : charSkin === 'ninja' ? '#2de2e6'
-      : charSkin === 'lucy' ? '#ff007f'
-      : '#e63946';
+    // Baskets mecha futuristes
+    // Semelle épaisse amortissante
+    rr(-0.13 * s, 0.04 * s, 0.27 * s, 0.11 * s, 0.04 * s, '#0b0f19', '#000');
+    // Conduit lumineux néon dans la semelle
+    cx.fillStyle = o.sn ? '#00f5d4' : (isGuard ? '#3b82f6' : hero.sole);
+    cx.fillRect(-0.11 * s, 0.07 * s, 0.23 * s, 0.05 * s);
 
-    rr(-0.12 * s, 0.04 * s, 0.25 * s, 0.10 * s, 0.04 * s, '#ffffff', '#141824');
-    rr(-0.11 * s, -0.06 * s, 0.22 * s, 0.12 * s, 0.05 * s, snCol, '#141824');
-    cx.fillStyle = '#ffffff'; cx.fillRect(-0.05 * s, -0.05 * s, 0.1 * s, 0.05 * s);
+    // Corps mecha de la basket
+    rr(-0.12 * s, -0.07 * s, 0.24 * s, 0.13 * s, 0.05 * s, isGuard ? '#1e293b' : hero.sneaker, '#0b0f19');
+    // Sangles / détails
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(-0.06 * s, -0.06 * s, 0.12 * s, 0.04 * s);
+
+    // Ailes de propulsion Super Baskets (si actif)
+    if (o.sn) {
+      cx.fillStyle = '#00f5d4';
+      cx.beginPath();
+      cx.moveTo(lg.side * 0.1 * s, -0.02 * s);
+      cx.lineTo(lg.side * 0.28 * s, -0.16 * s);
+      cx.lineTo(lg.side * 0.22 * s, 0.02 * s);
+      cx.closePath();
+      cx.fill();
+    }
     cx.restore();
   }
 
-  // 4. JETPACK DOUBLE
+  // 7. JETPACK DOUBLE
   if (o.jet) {
     cx.save();
     for (const k of [-1, 1]) {
       const tx = k * 0.25 * s;
-      rr(tx - 0.1 * s, -1.48 * s, 0.2 * s, 0.6 * s, 0.06 * s, '#cbd5e1', '#141824');
+      rr(tx - 0.1 * s, -1.48 * s, 0.2 * s, 0.6 * s, 0.06 * s, '#cbd5e1', '#0b0f19');
       rr(tx - 0.1 * s, -1.32 * s, 0.2 * s, 0.12 * s, 0.02 * s, '#ff9f1c');
 
       const flH = (0.42 + Math.random() * 0.32) * s;
@@ -562,125 +854,263 @@ function runner(x, y, z, pal, o) {
     cx.restore();
   }
 
-  // 5. BRAS & ACCESSOIRES
+  // 8. BRAS & ACCESSOIRES (Gants de combat tactiques)
   for (const k of [-1, 1]) {
     cx.save();
     const armPhase = -sw * k;
     cx.translate(k * 0.31 * s, -1.38 * s);
     cx.rotate(armPhase * 0.55 + k * 0.12);
 
-    const armSleeveCol = isGuard ? '#1b2a49'
-      : charSkin === 'tricky' ? '#2a9d8f'
-      : charSkin === 'ninja' ? '#1e293b'
-      : charSkin === 'lucy' ? '#222222'
-      : '#f8f9fa';
+    const armSleeveCol = isGuard ? '#1b2a49' : hero.jacket;
+    const armAccentCol = isGuard ? '#ffd23f' : hero.jacketAccent;
 
-    const armAccentCol = isGuard ? '#1b2a49'
-      : charSkin === 'tricky' ? '#e76f51'
-      : charSkin === 'ninja' ? '#0f172a'
-      : charSkin === 'lucy' ? '#ff007f'
-      : '#e63946';
-
-    rr(-0.075 * s, 0, 0.15 * s, 0.34 * s, 0.06 * s, armSleeveCol, '#141824');
+    rr(-0.075 * s, 0, 0.15 * s, 0.34 * s, 0.06 * s, armSleeveCol, '#0b0f19');
     rr(-0.075 * s, 0.18 * s, 0.15 * s, 0.22 * s, 0.05 * s, armAccentCol);
 
-    cx.fillStyle = charSkin === 'ninja' ? '#1e293b' : '#f4a261';
+    // Poing / Gant tactique fingerless
+    cx.fillStyle = isGuard ? '#1e293b' : hero.skin;
     cx.beginPath(); cx.arc(0, 0.43 * s, 0.075 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
 
-    if (k === 1) {
-      if (isGuard) {
-        cx.translate(0.04 * s, 0.42 * s); cx.rotate(-0.6);
-        rr(-0.035 * s, -0.28 * s, 0.07 * s, 0.36 * s, 0.03 * s, '#222222');
-      } else if (charSkin === 'jake') {
-        cx.translate(0.03 * s, 0.44 * s); cx.rotate(-0.35);
-        rr(-0.065 * s, -0.12 * s, 0.13 * s, 0.24 * s, 0.03 * s, '#e63946', '#141824');
-        cx.fillStyle = '#ffffff'; cx.fillRect(-0.065 * s, -0.05 * s, 0.13 * s, 0.08 * s);
-        cx.fillStyle = '#ced4da'; cx.fillRect(-0.04 * s, -0.16 * s, 0.08 * s, 0.04 * s);
-      }
+    if (k === 1 && isGuard) {
+      // Bâton de capture électrique du garde
+      cx.translate(0.04 * s, 0.42 * s); cx.rotate(-0.6);
+      rr(-0.035 * s, -0.28 * s, 0.07 * s, 0.36 * s, 0.03 * s, '#0f172a', '#000');
+      cx.fillStyle = '#ef4444'; cx.fillRect(-0.02 * s, -0.26 * s, 0.04 * s, 0.12 * s);
     }
     cx.restore();
   }
 
-  // 6. TORSE
+  // 9. TORSE & VESTE SHINOBI TECHWEAR AVEC KANJI DORSAL
   if (isGuard) {
-    rr(-0.31 * s, -1.48 * s, 0.62 * s, 0.74 * s, 0.14 * s, '#1b2a49', '#141824');
+    rr(-0.31 * s, -1.48 * s, 0.62 * s, 0.74 * s, 0.14 * s, '#1b2a49', '#0b0f19');
     cx.fillStyle = '#ffd23f'; cx.fillRect(-0.31 * s, -0.84 * s, 0.62 * s, 0.08 * s);
-  } else if (charSkin === 'ninja') {
-    rr(-0.29 * s, -1.46 * s, 0.58 * s, 0.72 * s, 0.14 * s, '#0f172a', '#141824');
-    rr(-0.25 * s, -1.45 * s, 0.50 * s, 0.62 * s, 0.1 * s, '#1e293b');
-    cx.fillStyle = '#2de2e6'; cx.fillRect(-0.29 * s, -0.92 * s, 0.58 * s, 0.08 * s);
-  } else if (charSkin === 'tricky') {
-    rr(-0.28 * s, -1.46 * s, 0.56 * s, 0.72 * s, 0.14 * s, '#2a9d8f', '#141824');
-    rr(-0.25 * s, -1.45 * s, 0.50 * s, 0.62 * s, 0.1 * s, '#e76f51');
-    cx.fillStyle = '#ffd23f'; cx.beginPath(); cx.arc(0, -1.13 * s, 0.09 * s, 0, Math.PI * 2); cx.fill();
-  } else if (charSkin === 'lucy') {
-    // Veste de cuir punk cloutée
-    rr(-0.28 * s, -1.46 * s, 0.56 * s, 0.72 * s, 0.14 * s, '#111111', '#141824');
-    rr(-0.24 * s, -1.44 * s, 0.48 * s, 0.58 * s, 0.08 * s, '#333333');
-    cx.fillStyle = '#ff007f'; cx.beginPath(); cx.arc(0, -1.13 * s, 0.08 * s, 0, Math.PI * 2); cx.fill();
   } else {
-    // Jake classique
-    rr(-0.28 * s, -1.46 * s, 0.56 * s, 0.72 * s, 0.14 * s, '#e63946', '#141824');
-    rr(-0.26 * s, -1.45 * s, 0.52 * s, 0.62 * s, 0.1 * s, '#2b5876', '#141824');
-    cx.fillStyle = '#1e3c52'; cx.fillRect(-0.18 * s, -1.44 * s, 0.36 * s, 0.1 * s);
-    rr(-0.17 * s, -1.32 * s, 0.34 * s, 0.38 * s, 0.08 * s, '#d62828', '#141824');
-    cx.fillStyle = '#ffd23f'; cx.beginPath(); cx.arc(0, -1.13 * s, 0.09 * s, 0, Math.PI * 2); cx.fill();
+    // Veste techwear principale
+    rr(-0.29 * s, -1.48 * s, 0.58 * s, 0.74 * s, 0.13 * s, hero.jacket, '#0b0f19');
+    // Plastron / Col montant intérieur
+    rr(-0.24 * s, -1.46 * s, 0.48 * s, 0.62 * s, 0.09 * s, hero.jacketInner);
+    // Liserés d'énergie néon verticaux
+    cx.fillStyle = hero.jacketAccent;
+    cx.fillRect(-0.18 * s, -1.46 * s, 0.035 * s, 0.65 * s);
+    cx.fillRect(0.145 * s, -1.46 * s, 0.035 * s, 0.65 * s);
+    // Ceinture mecha avec boucle
+    cx.fillStyle = '#0b0f19';
+    cx.fillRect(-0.29 * s, -0.88 * s, 0.58 * s, 0.08 * s);
+    cx.fillStyle = hero.jacketAccent;
+    cx.fillRect(-0.06 * s, -0.89 * s, 0.12 * s, 0.10 * s);
+
+    // Emblème Kanji dans le dos
+    cx.save();
+    cx.font = `900 ${Math.floor(0.24 * s)}px "Noto Sans JP", system-ui, sans-serif`;
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.fillStyle = hero.jacketAccent;
+    cx.shadowColor = hero.jacketAccent;
+    cx.shadowBlur = 8;
+    cx.fillText(hero.kanji, 0, -1.18 * s);
+    cx.restore();
   }
 
-  // 7. TÊTE & COIFFE
+  // 10. TÊTE, BANDEAU SHINOBI & COIFFURE ANIME 3D MULTI-COUCHES
   const headOsc = Math.sin(cyc * 0.5) * 0.04;
   cx.save();
-  cx.translate(0, -1.72 * s);
+  cx.translate(0, -1.74 * s);
   cx.rotate(headOsc);
 
   if (isGuard) {
-    cx.fillStyle = '#f4a261'; cx.beginPath(); cx.arc(0, 0, 0.22 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    rr(-0.26 * s, -0.24 * s, 0.52 * s, 0.18 * s, 0.06 * s, '#0f172a');
-    cx.fillStyle = '#ffd23f'; cx.beginPath(); cx.arc(0, -0.15 * s, 0.05 * s, 0, Math.PI * 2); cx.fill();
-  } else if (charSkin === 'ninja') {
-    cx.fillStyle = '#0f172a'; cx.beginPath(); cx.arc(0, -0.02 * s, 0.28 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    cx.fillStyle = '#2de2e6'; cx.shadowColor = '#2de2e6'; cx.shadowBlur = 10;
-    rr(-0.18 * s, -0.05 * s, 0.36 * s, 0.08 * s, 0.04 * s, '#2de2e6');
+    // Garde Cyber-Enforcer
+    cx.fillStyle = '#f4a261'; cx.beginPath(); cx.arc(0, 0, 0.23 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
+    // Visière cybernétique rouge néon
+    rr(-0.25 * s, -0.12 * s, 0.50 * s, 0.16 * s, 0.04 * s, '#0f172a', '#000');
+    cx.fillStyle = '#ef4444'; cx.shadowColor = '#ef4444'; cx.shadowBlur = 10;
+    cx.fillRect(-0.21 * s, -0.08 * s, 0.42 * s, 0.08 * s);
     cx.shadowBlur = 0;
-  } else if (charSkin === 'tricky') {
-    cx.fillStyle = '#f4a261'; cx.beginPath(); cx.arc(0, 0.02 * s, 0.21 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    cx.fillStyle = '#ffd23f';
-    cx.beginPath(); cx.arc(-0.18 * s, 0.12 * s, 0.08 * s, 0, Math.PI * 2); cx.fill();
-    cx.beginPath(); cx.arc(0.18 * s, 0.12 * s, 0.08 * s, 0, Math.PI * 2); cx.fill();
-    cx.fillStyle = '#2de2e6'; cx.beginPath(); cx.arc(0, -0.05 * s, 0.26 * s, Math.PI, 0); cx.fill();
-    rr(-0.24 * s, -0.08 * s, 0.48 * s, 0.10 * s, 0.05 * s, '#00b4d8');
-  } else if (charSkin === 'lucy') {
-    // Visage + Crête Punk Rose Vif
-    cx.fillStyle = '#f4a261'; cx.beginPath(); cx.arc(0, 0.02 * s, 0.21 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    cx.fillStyle = '#ff007f';
-    // Crête iroquoise en pointes
-    cx.beginPath();
-    cx.moveTo(-0.06 * s, -0.1 * s);
-    cx.lineTo(-0.04 * s, -0.38 * s);
-    cx.lineTo(0.04 * s, -0.38 * s);
-    cx.lineTo(0.06 * s, -0.1 * s);
-    cx.closePath(); cx.fill();
-    cx.beginPath(); cx.arc(0, -0.18 * s, 0.16 * s, Math.PI, 0); cx.fill();
+    // Casquette tactique de police
+    rr(-0.28 * s, -0.32 * s, 0.56 * s, 0.22 * s, 0.06 * s, '#0f172a');
+    cx.fillStyle = '#ffd23f'; cx.fillRect(-0.06 * s, -0.22 * s, 0.12 * s, 0.08 * s);
   } else {
-    // Jake classique
-    rr(-0.2 * s, 0.14 * s, 0.4 * s, 0.12 * s, 0.05 * s, '#d62828');
-    cx.fillStyle = '#f1f5f9'; cx.beginPath(); cx.arc(0, -0.02 * s, 0.29 * s, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    cx.fillStyle = '#e63946'; cx.beginPath(); cx.arc(0, -0.04 * s, 0.23 * s, Math.PI, 0); cx.fill();
-    cx.fillStyle = '#ffffff'; cx.beginPath(); cx.arc(0, -0.08 * s, 0.15 * s, Math.PI * 1.15, -Math.PI * 0.15); cx.fill();
-    rr(-0.24 * s, -0.06 * s, 0.48 * s, 0.08 * s, 0.04 * s, '#d62828', '#141824');
-    rr(-0.18 * s, 0.02 * s, 0.36 * s, 0.12 * s, 0.04 * s, '#4a2c11');
+    // VISAGE ANIME (Menton effilé et cel-shading)
+    cx.fillStyle = hero.skin;
+    cx.beginPath();
+    cx.moveTo(-0.20 * s, -0.10 * s);
+    cx.lineTo(-0.18 * s, 0.08 * s);
+    cx.lineTo(0, 0.22 * s); // Menton pointu anime
+    cx.lineTo(0.18 * s, 0.08 * s);
+    cx.lineTo(0.20 * s, -0.10 * s);
+    cx.closePath();
+    cx.fill(); cx.stroke();
+
+    // Ombre du menton
+    cx.fillStyle = hero.skinShadow;
+    cx.beginPath();
+    cx.moveTo(-0.08 * s, 0.12 * s);
+    cx.lineTo(0, 0.22 * s);
+    cx.lineTo(0.08 * s, 0.12 * s);
+    cx.closePath();
+    cx.fill();
+
+    // BANDEAU SHINOBI (Hachimaki) avec plaque métallique gravée
+    rr(-0.23 * s, -0.18 * s, 0.46 * s, 0.15 * s, 0.03 * s, hero.hairBand, '#0b0f19');
+    // Plaque métallique polie
+    const plateGrad = cx.createLinearGradient(0, -0.17 * s, 0, -0.05 * s);
+    plateGrad.addColorStop(0, '#f8fafc');
+    plateGrad.addColorStop(0.5, hero.plate);
+    plateGrad.addColorStop(1, '#94a3b8');
+    rr(-0.14 * s, -0.16 * s, 0.28 * s, 0.11 * s, 0.025 * s, plateGrad, '#0b0f19');
+    // Gravure sur plaque (Insigne de Course 疾)
+    cx.fillStyle = '#0b0f19';
+    cx.fillRect(-0.05 * s, -0.115 * s, 0.10 * s, 0.022 * s);
+    cx.fillRect(-0.011 * s, -0.145 * s, 0.022 * s, 0.08 * s);
+
+    // Rubans du bandeau flottant au vent à l'arrière
+    const ribPhase = tt * 16;
+    for (const rk of [-1, 1]) {
+      const rx0 = rk * 0.12 * s;
+      const ry0 = -0.12 * s;
+      const rx1 = rx0 + Math.sin(ribPhase + rk) * 0.08 * s + rk * 0.12 * s;
+      const ry1 = ry0 + 0.18 * s;
+      const rx2 = rx1 + Math.sin(ribPhase * 1.3 + rk) * 0.12 * s + rk * 0.15 * s;
+      const ry2 = ry1 + 0.22 * s;
+
+      cx.strokeStyle = hero.ribbon;
+      cx.lineWidth = 0.045 * s;
+      cx.beginPath();
+      cx.moveTo(rx0, ry0);
+      cx.quadraticCurveTo(rx1, ry1, rx2, ry2);
+      cx.stroke();
+    }
+
+    // COIFFURE ANIME JAPONAIS 3D
+    if (heroKey === 'hikari') {
+      // --- HIKARI : TWIN-TAILS DYNAMIQUES & FRANGE BLONDE/MAGENTA ---
+      cx.fillStyle = hero.hairBase;
+      cx.beginPath(); cx.arc(0, -0.16 * s, 0.26 * s, Math.PI, 0); cx.fill(); cx.stroke();
+
+      const bangs = [
+        [-0.18, -0.15, -0.14, 0.02, -0.09, -0.15],
+        [-0.09, -0.15, -0.04, 0.05, 0.01, -0.15],
+        [0.01, -0.15, 0.06, 0.04, 0.11, -0.15],
+        [0.11, -0.15, 0.16, 0.01, 0.20, -0.15]
+      ];
+      for (const b of bangs) {
+        cx.beginPath();
+        cx.moveTo(b[0] * s, b[1] * s);
+        cx.lineTo(b[2] * s, b[3] * s);
+        cx.lineTo(b[4] * s, b[5] * s);
+        cx.closePath();
+        cx.fill(); cx.stroke();
+      }
+
+      // Reflet céleste ("tenshi no wa")
+      cx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      cx.beginPath();
+      cx.ellipse(0, -0.25 * s, 0.18 * s, 0.04 * s, 0, 0, Math.PI * 2);
+      cx.fill();
+
+      // Twin-Tails dynamiques gauche & droite
+      for (const side of [-1, 1]) {
+        cx.save();
+        const tieX = side * 0.24 * s, tieY = -0.22 * s;
+        cx.translate(tieX, tieY);
+        rr(-0.04 * s, -0.04 * s, 0.08 * s, 0.08 * s, 0.03 * s, hero.hairBand, '#0b0f19');
+
+        const tSway = Math.sin(tt * 15 + side * 1.2) * 0.14 * s;
+        const tBounce = Math.cos(tt * 12) * 0.08 * s;
+        const tailGrad = cx.createLinearGradient(0, 0, side * 0.2 * s, 0.65 * s);
+        tailGrad.addColorStop(0, hero.hairBase);
+        tailGrad.addColorStop(0.6, hero.hairShadow);
+        tailGrad.addColorStop(1, hero.hairHighlight);
+
+        cx.fillStyle = tailGrad;
+        cx.strokeStyle = '#0b0f19';
+        cx.lineWidth = Math.max(1.2, 0.028 * s);
+        cx.beginPath();
+        cx.moveTo(-0.03 * s, 0);
+        cx.bezierCurveTo(side * 0.18 * s + tSway, 0.2 * s + tBounce, side * 0.25 * s + tSway * 1.5, 0.45 * s, side * 0.08 * s + tSway, 0.72 * s);
+        cx.lineTo(side * 0.02 * s + tSway, 0.72 * s);
+        cx.bezierCurveTo(side * 0.10 * s + tSway, 0.42 * s, side * 0.04 * s, 0.2 * s, 0.03 * s, 0);
+        cx.closePath();
+        cx.fill(); cx.stroke();
+        cx.restore();
+      }
+    } else {
+      // --- REN, KURO & RYU : COUPE SPIKY SHONEN MULTI-COUCHES EN 3D ---
+      // Couche d'ombre arrière
+      cx.fillStyle = hero.hairShadow;
+      cx.beginPath(); cx.arc(0, -0.16 * s, 0.27 * s, Math.PI, 0); cx.fill();
+
+      // Couronne de pointes spiky 3D (5 épis majeurs)
+      const spikes = [
+        [-0.26, -0.15, -0.34, -0.38, -0.16, -0.28],
+        [-0.18, -0.26, -0.18, -0.52, -0.06, -0.32],
+        [-0.08, -0.32, 0.02, -0.58, 0.08, -0.32],
+        [0.06, -0.32, 0.20, -0.50, 0.18, -0.26],
+        [0.16, -0.26, 0.32, -0.36, 0.25, -0.14]
+      ];
+
+      const spikeGrad = cx.createLinearGradient(0, -0.58 * s, 0, -0.14 * s);
+      spikeGrad.addColorStop(0, hero.hairHighlight);
+      spikeGrad.addColorStop(0.35, hero.hairBase);
+      spikeGrad.addColorStop(1, hero.hairShadow);
+
+      cx.fillStyle = spikeGrad;
+      cx.strokeStyle = '#0b0f19';
+      cx.lineWidth = Math.max(1.3, 0.03 * s);
+
+      for (const sp of spikes) {
+        const wind = Math.sin(tt * 20 + sp[2] * 4) * 0.025 * s;
+        cx.beginPath();
+        cx.moveTo(sp[0] * s, sp[1] * s);
+        cx.lineTo(sp[2] * s + wind, sp[3] * s);
+        cx.lineTo(sp[4] * s, sp[5] * s);
+        cx.closePath();
+        cx.fill();
+        cx.stroke();
+      }
+
+      // Frange avant encadrant le visage
+      const frontBangs = [
+        [-0.22, -0.14, -0.17, 0.05, -0.10, -0.14],
+        [-0.11, -0.14, -0.05, 0.08, 0.00, -0.14],
+        [-0.01, -0.14, 0.06, 0.07, 0.12, -0.14],
+        [0.11, -0.14, 0.18, 0.04, 0.22, -0.14]
+      ];
+      cx.fillStyle = hero.hairBase;
+      for (const fb of frontBangs) {
+        cx.beginPath();
+        cx.moveTo(fb[0] * s, fb[1] * s);
+        cx.lineTo(fb[2] * s, fb[3] * s);
+        cx.lineTo(fb[4] * s, fb[5] * s);
+        cx.closePath();
+        cx.fill(); cx.stroke();
+      }
+
+      // Reflet brillant en croissant ("tenshi no wa")
+      cx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      cx.beginPath();
+      cx.ellipse(0, -0.28 * s, 0.20 * s, 0.045 * s, -0.08, 0, Math.PI * 2);
+      cx.fill();
+    }
   }
   cx.restore();
 
-  // 8. PITBULL DU GARDE
+  // 11. CYBER-HOUND DU GARDE
   if (isGuard) {
     cx.save();
     cx.translate(0.55 * s, -0.12 * s + Math.abs(sw) * 0.09 * s);
-    rr(-0.16 * s, -0.34 * s, 0.32 * s, 0.28 * s, 0.09 * s, '#8d5524', '#141824');
-    cx.fillStyle = '#5c3818';
-    cx.fillRect(-0.14 * s, -0.44 * s, 0.08 * s, 0.14 * s);
-    cx.fillRect(0.06 * s, -0.44 * s, 0.08 * s, 0.14 * s);
-    cx.fillStyle = '#e63946'; cx.fillRect(-0.15 * s, -0.22 * s, 0.30 * s, 0.05 * s);
+    // Corps mecha
+    rr(-0.17 * s, -0.34 * s, 0.34 * s, 0.28 * s, 0.08 * s, '#334155', '#0b0f19');
+    // Visière optique rouge
+    cx.fillStyle = '#ef4444';
+    cx.fillRect(-0.16 * s, -0.30 * s, 0.12 * s, 0.05 * s);
+    // Oreilles mecha dressées
+    cx.fillStyle = '#1e293b';
+    cx.beginPath(); cx.moveTo(-0.14 * s, -0.34 * s); cx.lineTo(-0.10 * s, -0.46 * s); cx.lineTo(-0.06 * s, -0.34 * s); cx.closePath(); cx.fill(); cx.stroke();
+    cx.beginPath(); cx.moveTo(0.06 * s, -0.34 * s); cx.lineTo(0.10 * s, -0.46 * s); cx.lineTo(0.14 * s, -0.34 * s); cx.closePath(); cx.fill(); cx.stroke();
+    // Pattes
+    cx.fillStyle = '#0b0f19';
+    cx.fillRect(-0.14 * s, -0.06 * s, 0.07 * s, 0.12 * s);
+    cx.fillRect(0.07 * s, -0.06 * s, 0.07 * s, 0.12 * s);
     cx.restore();
   }
 
@@ -833,7 +1263,9 @@ function scene(st, dt) {
         jet: st.powerups.jetpack > 0,
         sn: st.powerups.sneakers > 0,
         tilt: st.status === 'over' ? 1.3 : p.state === 'stumble' ? 0.25 * Math.sin(tt * 30) : (p.lane * lw - p.x) * -0.14,
-        al: st.invulnerable && st.status === 'running' && Math.floor(tt * 14) % 2 ? 0.45 : 1
+        al: st.invulnerable && st.status === 'running' && Math.floor(tt * 14) % 2 ? 0.45 : 1,
+        awakening: st.awakeningActive,
+        awakeningTimer: st.awakeningTimer
       });
     } else if (o === 'C') {
       runner(p.x, 0, pz - 3.4, { guard: true }, {});
@@ -934,6 +1366,25 @@ function hud(st) {
       const maxDur = G.cfg[k + 'Duration'] || 10;
       if (v > 0) c.querySelector('b').style.transform = `scaleX(${v / maxDur})`;
     }
+  }
+
+  // Jauge d'Éveil Anime
+  const awkVal = st.awakening || 0;
+  const isAwkActive = st.awakeningActive || false;
+  const isAwkReady = awkVal >= 100;
+  if ($('awakening-gauge-fill')) $('awakening-gauge-fill').style.width = Math.min(100, isAwkActive ? ((st.awakeningTimer || 0) / 8.0) * 100 : awkVal) + '%';
+  if ($('awakening-card')) {
+    $('awakening-card').classList.toggle('ready', isAwkReady && !isAwkActive);
+    $('awakening-card').classList.toggle('active', isAwkActive);
+  }
+  if ($('awakening-text')) {
+    $('awakening-text').textContent = isAwkActive
+      ? `⚡ ÉVEIL ACTIF (${(st.awakeningTimer || 0).toFixed(1)}s)`
+      : (isAwkReady ? '⚡ ÉVEIL PRÊT ! (E)' : `ÉVEIL ${Math.floor(awkVal)}%`);
+  }
+  if ($('b-awakening')) {
+    $('b-awakening').classList.toggle('ready', isAwkReady && !isAwkActive);
+    $('b-awakening').classList.toggle('active', isAwkActive);
   }
 }
 
@@ -1041,10 +1492,10 @@ function renderMissionsModal() {
 /* ---------- Boutique, Garage & Améliorations ---------- */
 const SHOP_DATA = {
   chars: [
-    { id: 'jake', name: 'Jake', desc: 'Le graffeur vedette emblématique', price: 0, icon: '🧢' },
-    { id: 'tricky', name: 'Tricky', desc: 'La skater aux tricks audacieux', price: 500, icon: '👧' },
-    { id: 'ninja', name: 'Ninja', desc: 'Shinobi cybernétique ultra-agile', price: 1200, icon: '🥷' },
-    { id: 'lucy', name: 'Lucy', desc: 'Punk rocker aux cheveux rose néon', price: 2000, icon: '🎸' }
+    { id: 'ren', name: 'Ren 蓮 (Cyber Shinobi)', desc: 'Héros Shōnen cybernétique, bandeau ninja & katana d’énergie', price: 0, icon: '🥷' },
+    { id: 'hikari', name: 'Hikari 光 (Anime Valkyrie)', desc: 'Skateuse anime aux twin-tails dynamiques et veste mecha', price: 500, icon: '⚡' },
+    { id: 'kuro', name: 'Kuro 黒 (Shadow Ninja)', desc: 'Shinobi ténébreux aux yeux écarlates et écharpe flottante', price: 1200, icon: '🗡️' },
+    { id: 'ryu', name: 'Ryu 竜 (Flame Ronin)', desc: 'Ronin enflammé aux pointes de feu et haori incandescent', price: 2000, icon: '🔥' }
   ],
   boards: [
     { id: 'classic', name: 'Neon Wave', desc: 'Planche rose néon classique', price: 0, icon: '🛹' },
@@ -1335,6 +1786,7 @@ function pollGamepad() {
   const dRight = (gp.buttons[15] && gp.buttons[15].pressed) || axisX > 0.5;
   const btnA = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[12] && gp.buttons[12].pressed);
   const btnB = (gp.buttons[1] && gp.buttons[1].pressed) || (gp.buttons[13] && gp.buttons[13].pressed);
+  const btnY = (gp.buttons[3] && gp.buttons[3].pressed) || (gp.buttons[2] && gp.buttons[2].pressed);
   const btnH = (gp.buttons[5] && gp.buttons[5].pressed) || (gp.buttons[7] && gp.buttons[7].pressed);
   const btnP = (gp.buttons[9] && gp.buttons[9].pressed);
 
@@ -1342,11 +1794,13 @@ function pollGamepad() {
   if (dRight && !gpLastState.right) G.input('right');
   if (btnA && !gpLastState.btnA) G.input('jump');
   if (btnB && !gpLastState.btnB) G.input('roll');
+  if (btnY && !gpLastState.btnY) tryAwakening();
   if (btnH && !gpLastState.btnH) tryBoard();
   if (btnP && !gpLastState.btnP) G.state === 'running' ? G.pause() : G.resume();
 
   gpLastState.left = dLeft; gpLastState.right = dRight;
   gpLastState.btnA = btnA; gpLastState.btnB = btnB;
+  gpLastState.btnY = btnY;
   gpLastState.btnH = btnH; gpLastState.btnP = btnP;
 }
 
@@ -1408,6 +1862,41 @@ G.on('shieldBreak', () => {
   toast('🛹 HOVERBOARD DÉTRUIT !');
   const q = pr(G.player.x, G.player.y, pz);
   burst(q[0], q[1], 16, '#2de2e6', 2.2, 0.6);
+});
+
+G.on('awakeningReady', () => {
+  snd(587, 1174, 0.35, 'triangle', 0.15);
+  toast('⚡ ÉVEIL ANIME PRÊT ! (Touche E / Bouton)');
+  addPopupText(W / 2, H * 0.38, '⚡ 覚醒 READY !', '#00f5d4');
+});
+
+G.on('awakeningStart', () => {
+  shake = 0.55; flash = 0.5;
+  snd(260, 880, 0.45, 'sawtooth', 0.2);
+  toast('⚡ OVERDRIVE ÉVEIL ACTIVÉ !');
+  addPopupText(W / 2, H * 0.35, '⚡ 覚醒 OVERDRIVE !', '#ffd23f');
+  burst(W / 2, H * 0.45, 25, '#00f5d4', 3.5, 0.7);
+  burst(W / 2, H * 0.45, 25, '#ffd23f', 3.5, 0.7);
+});
+
+G.on('awakeningEnd', () => {
+  toast('⚡ Mode Éveil terminé');
+});
+
+G.on('obstacleSmash', e => {
+  shake = 0.4;
+  snd(150, 40, 0.3, 'sawtooth', 0.18);
+  const q = pr(e.obstacle.x, (e.obstacle.height || 1.5) / 2, pz + 1);
+  burst(q[0], q[1], 20, '#ff0055', 3.5, 0.6);
+  burst(q[0], q[1], 20, '#ffd23f', 3.5, 0.6);
+  addPopupText(q[0], q[1] - 20, '💥 破断 SMASH!', '#ff0055');
+});
+
+G.on('nearMiss', e => {
+  snd(880, 1760, 0.12, 'sine', 0.12);
+  const q = pr(e.x, e.y + 1, e.z);
+  burst(q[0], q[1], 10, '#00f5d4', 1.8, 0.4);
+  addPopupText(q[0], q[1] - 25, '見切り +200!', '#00f5d4');
 });
 
 G.on('powerup', e => {
@@ -1520,6 +2009,19 @@ function tryBoard() {
   }
 }
 
+function tryAwakening() {
+  if (G.state === 'running') {
+    if (G.awakening >= 100 && (G.timers.awakening || 0) <= 0) {
+      G.activateAwakening();
+    } else if ((G.timers.awakening || 0) > 0) {
+      toast('⚡ Mode Éveil déjà actif !');
+    } else {
+      toast(`⚡ Jauge d'Éveil : ${Math.floor(G.awakening || 0)}% (Ramassez des pièces !)`);
+      snd(220, 110, 0.15, 'sawtooth', 0.06);
+    }
+  }
+}
+
 /* Boosts de départ Headstart */
 $('hs-normal').onclick = () => {
   if (wallet < 100) {
@@ -1585,6 +2087,9 @@ $('bmusic').onclick = e => {
 if (bgmMute) $('bmusic').textContent = '🎵❌';
 
 $('bh').onclick = tryBoard;
+if ($('b-awakening')) $('b-awakening').onclick = tryAwakening;
+if ($('awakening-card')) $('awakening-card').onclick = tryAwakening;
+if ($('t-awk')) $('t-awk').onclick = tryAwakening;
 
 $('open-shop').onclick = $('over-shop').onclick = $('pause-shop').onclick = () => {
   renderShop();
@@ -1628,6 +2133,8 @@ addEventListener('keydown', e => {
     if (!menu.classList.contains('hide') || !ov.classList.contains('hide')) play();
   } else if (e.key.toLowerCase() === 'h') {
     tryBoard();
+  } else if (e.key.toLowerCase() === 'e') {
+    tryAwakening();
   }
 });
 
