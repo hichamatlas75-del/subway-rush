@@ -174,7 +174,9 @@
       if (this.state !== 'over') return false;
       const p = this.player;
       this.obstacles = this.obstacles.filter(o => o.z + o.length < p.z - 5 || o.z > p.z + 45);
-      p.y = 0; p.vy = 0; p.lane = p.prevLane = Math.round(p.x / this.cfg.laneWidth);
+      p.y = 0; p.vy = 0;
+      p.lane = p.prevLane = clamp(Math.round(p.x / this.cfg.laneWidth), -1, 1);
+      p.x = p.lane * this.cfg.laneWidth;
       this.timers.chaser = 0; this.timers.stumble = 0;
       this.timers.invuln = this.cfg.reviveInvuln;
       this.speedMul = 0.8;
@@ -403,10 +405,10 @@
         return;
       }
       if (kind === 'side') {
-        if (p.lane !== p.prevLane) p.lane = p.prevLane;
-        // Repousser le joueur pour éviter l'encastrement latéral
+        // Repousser le joueur pour éviter l'encastrement latéral et assigner la voie sûre
         const dir = Math.sign(p.x - ob.x) || (p.prevLane < p.lane ? -1 : 1);
         p.x = ob.x + dir * (ob.halfWidth + c.playerHalfWidth + 0.05);
+        p.lane = p.prevLane = clamp(Math.round(p.x / c.laneWidth), -1, 1);
       }
       if (T.invuln > 0) {
         if (kind === 'frontal' && ob.type !== 'high') { p.y = Math.max(p.y, surf); p.vy = 0; }

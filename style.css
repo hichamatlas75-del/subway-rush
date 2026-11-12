@@ -1202,7 +1202,7 @@ button.m:disabled {
   width: 100%;
 }
 
-.q-btn {
+.q-btn, .track-btn {
   flex: 1;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1215,7 +1215,7 @@ button.m:disabled {
   transition: all 0.15s ease;
 }
 
-.q-btn.active {
+.q-btn.active, .track-btn.active {
   background: var(--cyan);
   color: #0b0d1f;
   border-color: var(--cyan);

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Subway Rush HD — Hicham.Hub</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=6.0">
 </head>
 <body>
   <canvas id="c"></canvas>
@@ -198,8 +198,17 @@
       </div>
 
       <div class="settings-group">
-        <label>Musique Synthwave (BGM) : <span id="bgm-vol-val">30%</span></label>
+        <label>Musique d'Ambiance (BGM) : <span id="bgm-vol-val">30%</span></label>
         <input type="range" id="bgm-vol" min="0" max="100" value="30">
+      </div>
+
+      <div class="settings-group">
+        <label>Piste d'Ambiance :</label>
+        <div class="quality-selector" id="bgm-track-selector">
+          <button class="track-btn active" data-track="shinobi">Cyber Shinobi 🥷</button>
+          <button class="track-btn" data-track="tokyo">Néo-Tokyo 🌸</button>
+          <button class="track-btn" data-track="overdrive">Overdrive ⚡</button>
+        </div>
       </div>
 
       <div class="settings-group">
@@ -249,7 +258,7 @@
     </div>
   </div>
 
-  <script src="engine.js"></script>
-  <script src="app.js"></script>
+  <script src="engine.js?v=6.0"></script>
+  <script src="app.js?v=6.0"></script>
 </body>
 </html>

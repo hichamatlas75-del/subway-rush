@@ -1,15 +1,17 @@
-const CACHE_NAME = 'subway-rush-v4';
+const CACHE_NAME = 'subway-rush-v6';
 const ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './engine.js',
-  './app.js',
+  './style.css?v=6.0',
+  './engine.js?v=6.0',
+  './app.js?v=6.0',
   './manifest.json'
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).catch(() => {})
+  );
   self.skipWaiting();
 });
 
@@ -23,5 +25,17 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+  if (e.request.method !== 'GET') return;
+  // Network first: always try network to get fresh code, fallback to cache if offline
+  e.respondWith(
+    fetch(e.request)
+      .then(response => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const resClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(e.request))
+  );
 });

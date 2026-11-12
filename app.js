@@ -43,11 +43,12 @@ let W, H, F, HOR,
     sfxVol = ld('sr_sfx_vol', 0.8),
     bgmVol = ld('sr_bgm_vol', 0.3),
     touchControlsActive = ld('sr_touch_ctrls', false),
+    activeBgmTrack = ld('sr_bgm_track', 'shinobi'),
     sfxMute = ld('sr_sfx_mute', false),
     bgmMute = ld('sr_bgm_mute', false),
     mysteryBoxesInRun = 0,
     pendingHeadstart = null,
-    AC, sfxGain, bgmGain, bgmInterval,
+    AC, sfxGain, bgmGain, bgmFilter, bgmAmbGain, bgmInterval, ambientPadTimer,
     gamepadConnected = false,
     gpLastState = { left: false, right: false, up: false, down: false, btnA: false, btnB: false, btnH: false, btnP: false, btnY: false },
     last = 0, lastTap = 0, lastTapX = 0, lastTapY = 0;
@@ -126,19 +127,37 @@ function rs() {
 addEventListener('resize', rs);
 rs();
 
-/* ---------- Audio Synthétisé (Web Audio API) ---------- */
+/* ---------- Audio Synthétisé & Moteur Musical d'Ambiance (Web Audio API) ---------- */
 function initAudio() {
-  if (AC) return;
+  if (AC) {
+    if (AC.state === 'suspended') AC.resume().catch(() => {});
+    return;
+  }
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     AC = new AudioCtx();
+    
+    // SFX Bus
     sfxGain = AC.createGain();
     sfxGain.gain.setValueAtTime(sfxMute ? 0 : sfxVol, AC.currentTime);
     sfxGain.connect(AC.destination);
 
+    // BGM Master Filter (Filtre dynamique pour ambiance et Overdrive)
+    bgmFilter = AC.createBiquadFilter();
+    bgmFilter.type = 'lowpass';
+    bgmFilter.frequency.setValueAtTime(2200, AC.currentTime);
+    bgmFilter.Q.setValueAtTime(1.8, AC.currentTime);
+    bgmFilter.connect(AC.destination);
+
+    // BGM Rhythm / Melodic Bus
     bgmGain = AC.createGain();
     bgmGain.gain.setValueAtTime(bgmMute ? 0 : bgmVol, AC.currentTime);
-    bgmGain.connect(AC.destination);
+    bgmGain.connect(bgmFilter);
+
+    // BGM Ambient Pad Bus (Nappes chaleureuses et planantes)
+    bgmAmbGain = AC.createGain();
+    bgmAmbGain.gain.setValueAtTime(bgmMute ? 0 : (bgmVol * 0.45), AC.currentTime);
+    bgmAmbGain.connect(bgmFilter);
   } catch (e) {
     console.warn('Audio non supporté:', e);
   }
@@ -149,7 +168,7 @@ function snd(f1, f2, dur, ty = 'square', vol = 0.08) {
   initAudio();
   if (!AC) return;
   try {
-    if (AC.state === 'suspended') AC.resume();
+    if (AC.state === 'suspended') AC.resume().catch(() => {});
     const t = AC.currentTime,
           o = AC.createOscillator(),
           g = AC.createGain();
@@ -165,44 +184,305 @@ function snd(f1, f2, dur, ty = 'square', vol = 0.08) {
   } catch (e) {}
 }
 
+/* 3 Pistes Musicales d'Ambiance Synthwave & Cyber-Shinobi */
+const BGM_TRACKS = {
+  shinobi: {
+    name: 'Cyber Shinobi 🥷',
+    bpm: 124,
+    chords: [
+      [220.00, 261.63, 329.63, 493.88], // Am9
+      [174.61, 261.63, 329.63, 440.00], // Fmaj7
+      [146.83, 220.00, 261.63, 329.63], // Dm9
+      [164.81, 196.00, 246.94, 329.63]  // Em7
+    ],
+    bassRoots: [110.00, 87.31, 73.42, 82.41],
+    lead: [
+      440, 0, 523.25, 0, 587.33, 0, 659.25, 659.25,
+      0, 587.33, 0, 523.25, 493.88, 0, 440, 0,
+      659.25, 0, 698.46, 0, 783.99, 0, 659.25, 0,
+      587.33, 0, 523.25, 493.88, 440, 0, 0, 0,
+      440, 0, 659.25, 0, 587.33, 0, 523.25, 0,
+      493.88, 0, 523.25, 0, 440, 440, 0, 0,
+      329.63, 0, 440, 0, 523.25, 0, 587.33, 0,
+      659.25, 0, 783.99, 0, 880, 0, 0, 0
+    ],
+    arpScale: [220, 261.63, 329.63, 440, 493.88, 523.25, 659.25, 880]
+  },
+  tokyo: {
+    name: 'Néo-Tokyo 🌸',
+    bpm: 116,
+    chords: [
+      [174.61, 220.00, 261.63, 329.63], // Fmaj7
+      [196.00, 246.94, 293.66, 392.00], // G6
+      [164.81, 196.00, 246.94, 329.63], // Em7
+      [220.00, 261.63, 329.63, 392.00]  // Am7
+    ],
+    bassRoots: [87.31, 98.00, 82.41, 110.00],
+    lead: [
+      329.63, 0, 392.00, 0, 440.00, 0, 523.25, 0,
+      493.88, 0, 392.00, 0, 329.63, 0, 0, 0,
+      261.63, 0, 293.66, 0, 329.63, 0, 392.00, 0,
+      440.00, 0, 523.25, 0, 493.88, 0, 0, 0,
+      523.25, 0, 587.33, 0, 659.25, 0, 523.25, 0,
+      440.00, 0, 392.00, 0, 329.63, 0, 0, 0,
+      392.00, 0, 440.00, 0, 493.88, 0, 523.25, 0,
+      440.00, 0, 0, 0, 0, 0, 0, 0
+    ],
+    arpScale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25]
+  },
+  overdrive: {
+    name: 'Overdrive ⚡',
+    bpm: 132,
+    chords: [
+      [146.83, 220.00, 293.66, 349.23], // Dm
+      [116.54, 174.61, 233.08, 293.66], // Bbmaj7
+      [130.81, 196.00, 261.63, 329.63], // C
+      [110.00, 164.81, 220.00, 277.18]  // A7
+    ],
+    bassRoots: [73.42, 58.27, 65.41, 55.00],
+    lead: [
+      293.66, 293.66, 349.23, 0, 440.00, 0, 587.33, 587.33,
+      523.25, 0, 440.00, 0, 349.23, 0, 293.66, 0,
+      440.00, 440.00, 523.25, 0, 587.33, 0, 698.46, 698.46,
+      659.25, 0, 587.33, 0, 440.00, 0, 0, 0,
+      587.33, 0, 659.25, 0, 698.46, 0, 587.33, 0,
+      523.25, 0, 440.00, 0, 349.23, 0, 293.66, 0,
+      349.23, 0, 440.00, 0, 523.25, 0, 587.33, 0,
+      698.46, 0, 880.00, 0, 587.33, 0, 0, 0
+    ],
+    arpScale: [146.83, 174.61, 220.00, 261.63, 293.66, 349.23, 440.00, 587.33]
+  }
+};
+
 let bgmStep = 0;
-const BGM_SCALE = [130.81, 146.83, 164.81, 196.00, 220.00, 261.63];
+let ambientPadStep = 0;
+
+function playPadChord(notes, duration = 1.95) {
+  if (!AC || bgmMute) return;
+  try {
+    const t = AC.currentTime;
+    notes.forEach(freq => {
+      const o = AC.createOscillator();
+      const g = AC.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.024 * (bgmVol / 0.3), t + 0.25);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      o.connect(g);
+      g.connect(bgmAmbGain || bgmGain);
+      o.start(t);
+      o.stop(t + duration);
+    });
+  } catch (e) {}
+}
+
+function playBassNote(freq, dur = 0.11) {
+  if (!AC || bgmMute) return;
+  try {
+    const t = AC.currentTime;
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.075 * (bgmVol / 0.3), t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g);
+    g.connect(bgmGain);
+    o.start(t);
+    o.stop(t + dur);
+  } catch (e) {}
+}
+
+function playLeadNote(freq, dur = 0.16) {
+  if (!AC || bgmMute || !freq) return;
+  try {
+    const t = AC.currentTime;
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    const isAwk = (G.timers && G.timers.awakening > 0);
+    o.type = isAwk ? 'sawtooth' : 'square';
+    o.frequency.setValueAtTime(freq, t);
+    if (dur > 0.13) {
+      o.frequency.linearRampToValueAtTime(freq * 1.015, t + dur * 0.7);
+      o.frequency.linearRampToValueAtTime(freq, t + dur);
+    }
+    const vol = (isAwk ? 0.07 : 0.05) * (bgmVol / 0.3);
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(bgmGain);
+    o.start(t);
+    o.stop(t + dur);
+  } catch (e) {}
+}
+
+function playArpNote(scale, step) {
+  if (!AC || bgmMute || !scale || !scale.length) return;
+  try {
+    const t = AC.currentTime;
+    const idx = (step * 3) % scale.length;
+    const freq = scale[idx];
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq * 2, t);
+    g.gain.setValueAtTime(0.026 * (bgmVol / 0.3), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    o.connect(g);
+    g.connect(bgmGain);
+    o.start(t);
+    o.stop(t + 0.08);
+  } catch (e) {}
+}
+
+function playDrumKick() {
+  if (!AC || bgmMute) return;
+  try {
+    const t = AC.currentTime;
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.frequency.setValueAtTime(125, t);
+    o.frequency.exponentialRampToValueAtTime(32, t + 0.08);
+    g.gain.setValueAtTime(0.13 * (bgmVol / 0.3), t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    o.connect(g);
+    g.connect(bgmGain);
+    o.start(t);
+    o.stop(t + 0.08);
+  } catch (e) {}
+}
+
+function playDrumSnare() {
+  if (!AC || bgmMute) return;
+  try {
+    const t = AC.currentTime;
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(260, t);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.07);
+    g.gain.setValueAtTime(0.08 * (bgmVol / 0.3), t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.connect(g);
+    g.connect(bgmGain);
+    o.start(t);
+    o.stop(t + 0.07);
+  } catch (e) {}
+}
+
+function playDrumHihat() {
+  if (!AC || bgmMute) return;
+  try {
+    const t = AC.currentTime;
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(7500, t);
+    g.gain.setValueAtTime(0.012 * (bgmVol / 0.3), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    o.connect(g);
+    g.connect(bgmGain);
+    o.start(t);
+    o.stop(t + 0.03);
+  } catch (e) {}
+}
+
+function bgmTick() {
+  if (bgmMute || G.state !== 'running') return;
+  try {
+    initAudio();
+    if (!AC) return;
+    const t = AC.currentTime;
+    const track = BGM_TRACKS[activeBgmTrack] || BGM_TRACKS.shinobi;
+    const isAwk = (G.timers && G.timers.awakening > 0);
+
+    // Filtre passe-bas dynamique : s'ouvre complètement lors de l'Éveil pour une énergie intense
+    if (bgmFilter) {
+      const targetFreq = isAwk ? 4500 : (G.timers && G.timers.jetpack > 0 ? 3600 : 2200);
+      bgmFilter.frequency.setTargetAtTime(targetFreq, t, 0.1);
+    }
+
+    const barIdx = Math.floor(bgmStep / 16) % track.chords.length;
+    const stepInBar = bgmStep % 16;
+
+    // 1. Nappe d'accords ambiante (toutes les 16 doubles-croches)
+    if (stepInBar === 0) {
+      playPadChord(track.chords[barIdx], 1.9);
+    }
+
+    // 2. Basse roulante 16e note Synthwave
+    const root = track.bassRoots[barIdx];
+    let bassFreq = root;
+    if (stepInBar % 4 === 1 || stepInBar % 4 === 3) {
+      bassFreq = root * 2;
+    } else if (stepInBar % 4 === 2) {
+      bassFreq = root * 1.5;
+    }
+    playBassNote(bassFreq, 0.10);
+
+    // 3. Arpège étincelant en contre-temps
+    if (stepInBar % 2 === 1) {
+      playArpNote(track.arpScale, bgmStep);
+    }
+
+    // 4. Mélodie Anime héroïque
+    const leadNote = track.lead[bgmStep % track.lead.length];
+    if (leadNote > 0) {
+      playLeadNote(leadNote, 0.15);
+    }
+
+    // 5. Rythmique Synthwave (Pied, Caisse claire, Charleston)
+    if (stepInBar === 0 || stepInBar === 8) {
+      playDrumKick();
+    } else if (stepInBar === 4 || stepInBar === 12) {
+      playDrumSnare();
+    }
+    if (stepInBar % 2 === 0) {
+      playDrumHihat();
+    }
+
+    bgmStep = (bgmStep + 1) % 64;
+  } catch (e) {}
+}
+
+function startAmbientMenuBGM() {
+  if (ambientPadTimer || bgmMute) return;
+  initAudio();
+  if (!AC) return;
+  if (bgmFilter) {
+    try { bgmFilter.frequency.setTargetAtTime(700, AC.currentTime, 0.2); } catch (e) {}
+  }
+  const track = BGM_TRACKS[activeBgmTrack] || BGM_TRACKS.shinobi;
+  playPadChord(track.chords[ambientPadStep % track.chords.length], 2.2);
+  ambientPadStep = (ambientPadStep + 1) % track.chords.length;
+  ambientPadTimer = setInterval(() => {
+    if (bgmMute || G.state === 'running') {
+      stopAmbientMenuBGM();
+      return;
+    }
+    const tr = BGM_TRACKS[activeBgmTrack] || BGM_TRACKS.shinobi;
+    playPadChord(tr.chords[ambientPadStep % tr.chords.length], 2.2);
+    ambientPadStep = (ambientPadStep + 1) % tr.chords.length;
+  }, 2200);
+}
+
+function stopAmbientMenuBGM() {
+  if (ambientPadTimer) {
+    clearInterval(ambientPadTimer);
+    ambientPadTimer = null;
+  }
+}
+
 function startBGM() {
+  stopAmbientMenuBGM();
   if (bgmInterval || bgmMute) return;
   initAudio();
   if (!AC) return;
-  bgmInterval = setInterval(() => {
-    if (bgmMute || G.state !== 'running') return;
-    try {
-      const t = AC.currentTime;
-      const baseNote = BGM_SCALE[Math.floor(bgmStep / 4) % BGM_SCALE.length];
-      const octNote = (bgmStep % 2 === 0) ? baseNote : baseNote * 1.5;
-      const bOsc = AC.createOscillator();
-      const bGain = AC.createGain();
-      bOsc.type = 'sawtooth';
-      bOsc.frequency.setValueAtTime(octNote, t);
-      bGain.gain.setValueAtTime(0.09 * (bgmVol / 0.3), t);
-      bGain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      bOsc.connect(bGain);
-      bGain.connect(bgmGain);
-      bOsc.start(t);
-      bOsc.stop(t + 0.16);
-
-      if (bgmStep % 4 === 0) {
-        const kOsc = AC.createOscillator();
-        const kGain = AC.createGain();
-        kOsc.frequency.setValueAtTime(110, t);
-        kOsc.frequency.exponentialRampToValueAtTime(30, t + 0.1);
-        kGain.gain.setValueAtTime(0.12 * (bgmVol / 0.3), t);
-        kGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        kOsc.connect(kGain);
-        kGain.connect(bgmGain);
-        kOsc.start(t);
-        kOsc.stop(t + 0.1);
-      }
-      bgmStep = (bgmStep + 1) % 32;
-    } catch (e) {}
-  }, 170);
+  const track = BGM_TRACKS[activeBgmTrack] || BGM_TRACKS.shinobi;
+  const stepMs = Math.round((60 / track.bpm) / 4 * 1000);
+  bgmInterval = setInterval(bgmTick, stepMs);
 }
 
 function stopBGM() {
@@ -1748,18 +2028,42 @@ $('bgm-vol').oninput = e => {
   sv('sr_bgm_vol', bgmVol);
   $('bgm-vol-val').textContent = e.target.value + '%';
   if (bgmGain && AC) bgmGain.gain.setValueAtTime(bgmMute ? 0 : bgmVol, AC.currentTime);
+  if (bgmAmbGain && AC) bgmAmbGain.gain.setValueAtTime(bgmMute ? 0 : (bgmVol * 0.45), AC.currentTime);
 };
 $('bgm-vol').value = bgmVol * 100;
 $('bgm-vol-val').textContent = Math.round(bgmVol * 100) + '%';
 
-document.querySelectorAll('.q-btn').forEach(b => {
+// Sélecteur de qualité graphique
+document.querySelectorAll('.quality-selector button[data-q]').forEach(b => {
+  if (b.getAttribute('data-q') === graphicsQuality) b.classList.add('active');
+  else b.classList.remove('active');
   b.onclick = () => {
-    document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.quality-selector button[data-q]').forEach(btn => btn.classList.remove('active'));
     b.classList.add('active');
-    graphicsQuality = b.getAttribute('data-q');
+    graphicsQuality = b.getAttribute('data-q') || 'high';
     sv('sr_quality', graphicsQuality);
     rs();
     toast(`Qualité : ${graphicsQuality.toUpperCase()}`);
+  };
+});
+
+// Sélecteur de piste d'ambiance musicale
+const trackBtns = document.querySelectorAll('#bgm-track-selector .track-btn');
+trackBtns.forEach(b => {
+  if (b.getAttribute('data-track') === activeBgmTrack) b.classList.add('active');
+  else b.classList.remove('active');
+  b.onclick = () => {
+    trackBtns.forEach(btn => btn.classList.remove('active'));
+    b.classList.add('active');
+    activeBgmTrack = b.getAttribute('data-track') || 'shinobi';
+    sv('sr_bgm_track', activeBgmTrack);
+    const tr = BGM_TRACKS[activeBgmTrack];
+    toast(`🎵 Piste : ${tr ? tr.name : activeBgmTrack}`);
+    snd(523.25, 659.25, 0.12, 'triangle', 0.1);
+    if (G.state === 'running' && !bgmMute) {
+      stopBGM();
+      startBGM();
+    }
   };
 });
 
@@ -1906,79 +2210,119 @@ G.on('powerup', e => {
 
 G.on('pause', () => {
   stopBGM();
+  startAmbientMenuBGM();
   show(ps);
 });
 
 G.on('resume', () => {
+  stopAmbientMenuBGM();
   startBGM();
   hide(ps);
 });
 
 G.on('gameOver', e => {
-  G.lastReason = e.reason;
-  shake = 1.1; flash = 0.85;
-  stopBGM();
-  snd(220, 25, 0.9, 'sawtooth', 0.22);
-  if (navigator.vibrate) navigator.vibrate([120, 60, 160]);
-  setTimeout(() => over(e), 850);
+  try {
+    G.lastReason = (e && e.reason) || 'crash';
+    shake = 1.1; flash = 0.85;
+    stopBGM();
+    stopAmbientMenuBGM();
+  } catch (err) {}
+  try { snd(220, 25, 0.9, 'sawtooth', 0.22); } catch (err) {}
+  try { if (navigator.vibrate) navigator.vibrate([120, 60, 160]); } catch (err) {}
+
+  const triggerOver = () => {
+    try {
+      over(e);
+    } catch (err) {
+      console.error('Erreur over():', err);
+    } finally {
+      if (ov) {
+        ov.classList.remove('hide');
+        ov.style.display = 'flex';
+      }
+    }
+  };
+
+  setTimeout(triggerOver, 750);
 });
 
 /* ---------- Écran Game Over ---------- */
 function over(e) {
   if (G.state !== 'over') return;
-  const newCoins = e.coins - banked;
-  wallet += newCoins;
-  banked = e.coins;
-  sv('sr_wallet', wallet);
+  try {
+    const rawCoins = (e && typeof e.coins === 'number') ? e.coins : G.coins;
+    const newCoins = Math.max(0, rawCoins - banked);
+    wallet += newCoins;
+    banked = rawCoins;
+    sv('sr_wallet', wallet);
 
-  checkMissionProgress(e);
+    try { checkMissionProgress(e || G.getState()); } catch (err) {}
 
-  const rec = e.score > best;
-  if (rec) {
-    best = e.score;
-    sv('sr_best', best);
-    burst(W / 2, H * 0.4, 30, '#ffd23f', 4, 1.2);
-    burst(W / 2, H * 0.4, 30, '#2de2e6', 4, 1.2);
+    const score = (e && typeof e.score === 'number') ? e.score : Math.floor(G.score);
+    const dist = (e && typeof e.distance === 'number') ? e.distance : Math.floor(G.player.z);
+    const coins = (e && typeof e.coins === 'number') ? e.coins : G.coins;
+    const reason = (e && e.reason) ? e.reason : (G.lastReason || 'crash');
+
+    const rec = score > best;
+    if (rec) {
+      best = score;
+      sv('sr_best', best);
+      try {
+        burst(W / 2, H * 0.4, 30, '#ffd23f', 4, 1.2);
+        burst(W / 2, H * 0.4, 30, '#2de2e6', 4, 1.2);
+      } catch (err) {}
+    }
+
+    if ($('over-tag')) $('over-tag').textContent = reason === 'crash' ? '💥 COLLISION FRONTALE' : '🚨 INTERPELLATION';
+    if ($('why')) $('why').textContent = reason === 'crash' ? 'Percuté par un train !' : 'Le garde t’a rattrapé !';
+
+    if ($('st')) {
+      $('st').innerHTML = `
+        <div class="stat-cell"><span>Score</span><b>${score}</b></div>
+        <div class="stat-cell"><span>Distance</span><b>${dist} m</b></div>
+        <div class="stat-cell"><span>Pièces</span><b>🪙 ${coins}</b></div>`;
+    }
+
+    const s = (e && e.stats) || G.stats || {};
+    if ($('telemetry')) {
+      $('telemetry').textContent = `Sauts: ${s.jumps || 0} · Roulades: ${s.rolls || 0} · Voies: ${s.laneChanges || 0} · Bonus: ${s.powerups || 0}`;
+    }
+
+    if ($('rc')) $('rc').textContent = rec ? '🏆 NOUVEAU RECORD PERSONNEL !' : `Record actuel : ${best} · Banque : 🪙 ${wallet}`;
+
+    if (mysteryBoxesInRun > 0 && $('over-mystery-alert')) {
+      $('over-mystery-alert').textContent = `🎁 Ouvrir vos ${mysteryBoxesInRun} Boîtes Mystères !`;
+      show($('over-mystery-alert'));
+      $('over-mystery-alert').onclick = () => {
+        hide(ov);
+        if ($('open-mystery-btn')) $('open-mystery-btn').textContent = `✨ OUVRIR (${mysteryBoxesInRun})`;
+        show($('open-mystery-btn'));
+        hide($('close-mystery-btn'));
+        show(mysteryModal);
+      };
+    }
+
+    const r = $('rev');
+    if (r) {
+      r.style.display = revived ? 'none' : '';
+      r.disabled = wallet < 50;
+    }
+  } catch (err) {
+    console.error('Erreur over() stats:', err);
+  } finally {
+    if (ov) {
+      ov.classList.remove('hide');
+      ov.style.display = 'flex';
+    }
   }
-
-  if ($('over-tag')) $('over-tag').textContent = e.reason === 'crash' ? '💥 COLLISION FRONTALE' : '🚨 INTERPELLATION';
-  $('why').textContent = e.reason === 'crash' ? 'Percuté par un train !' : 'Le garde t’a rattrapé !';
-
-  $('st').innerHTML = `
-    <div class="stat-cell"><span>Score</span><b>${e.score}</b></div>
-    <div class="stat-cell"><span>Distance</span><b>${e.distance} m</b></div>
-    <div class="stat-cell"><span>Pièces</span><b>🪙 ${e.coins}</b></div>`;
-
-  const s = e.stats || {};
-  if ($('telemetry')) {
-    $('telemetry').textContent = `Sauts: ${s.jumps || 0} · Roulades: ${s.rolls || 0} · Voies: ${s.laneChanges || 0} · Bonus: ${s.powerups || 0}`;
-  }
-
-  $('rc').textContent = rec ? '🏆 NOUVEAU RECORD PERSONNEL !' : `Record actuel : ${best} · Banque : 🪙 ${wallet}`;
-
-  if (mysteryBoxesInRun > 0 && $('over-mystery-alert')) {
-    $('over-mystery-alert').textContent = `🎁 Ouvrir vos ${mysteryBoxesInRun} Boîtes Mystères !`;
-    show($('over-mystery-alert'));
-    $('over-mystery-alert').onclick = () => {
-      hide(ov);
-      if ($('open-mystery-btn')) $('open-mystery-btn').textContent = `✨ OUVRIR (${mysteryBoxesInRun})`;
-      show($('open-mystery-btn'));
-      hide($('close-mystery-btn'));
-      show(mysteryModal);
-    };
-  }
-
-  const r = $('rev');
-  r.style.display = revived ? 'none' : '';
-  r.disabled = wallet < 50;
-
-  show(ov);
 }
 
 /* ---------- Lancement & Contrôles ---------- */
 function play() {
   hide(menu); hide(ov); hide(ps); hide(shopModal); hide(missionsModal); hide(dailyModal); hide(mysteryModal); hide(settingsModal);
+  if (ov) ov.style.display = '';
   banked = 0; revived = 0; combo = 0; PA.length = 0; POPUPS.length = 0; mysteryBoxesInRun = 0;
+  stopAmbientMenuBGM();
   snd(440, 880, 0.12, 'triangle', 0.08);
   startBGM();
   G.setBaseMultiplier(baseMult);
@@ -2052,6 +2396,8 @@ $('rev').onclick = () => {
     sv('sr_wallet', wallet);
     revived = 1;
     hide(ov);
+    if (ov) ov.style.display = '';
+    stopAmbientMenuBGM();
     startBGM();
     G.revive();
   }
@@ -2061,8 +2407,10 @@ $('home').onclick = $('quit').onclick = () => {
   stopBGM();
   G.reset();
   hide(ov); hide(ps); hide(shopModal); hide(missionsModal); hide(dailyModal); hide(mysteryModal); hide(settingsModal);
+  if (ov) ov.style.display = '';
   show(menu);
   menuInfo();
+  startAmbientMenuBGM();
 };
 
 $('resume').onclick = () => G.resume();
@@ -2080,9 +2428,15 @@ $('bmusic').onclick = e => {
   bgmMute = !bgmMute;
   sv('sr_bgm_mute', bgmMute);
   if (bgmGain && AC) bgmGain.gain.setValueAtTime(bgmMute ? 0 : bgmVol, AC.currentTime);
+  if (bgmAmbGain && AC) bgmAmbGain.gain.setValueAtTime(bgmMute ? 0 : (bgmVol * 0.45), AC.currentTime);
   e.currentTarget.textContent = bgmMute ? '🎵❌' : '🎵';
-  if (!bgmMute && G.state === 'running') startBGM();
-  else if (bgmMute) stopBGM();
+  if (!bgmMute) {
+    if (G.state === 'running') startBGM();
+    else startAmbientMenuBGM();
+  } else {
+    stopBGM();
+    stopAmbientMenuBGM();
+  }
 };
 if (bgmMute) $('bmusic').textContent = '🎵❌';
 
@@ -2173,6 +2527,31 @@ function loop(ts) {
 requestAnimationFrame(loop);
 menuInfo();
 
+// Securité anti-blocage : si l'écran Game Over tarde ou est masqué par anomalie, un tap sur le canvas le débloque
+cv.addEventListener('pointerup', () => {
+  if (G.state === 'over' && ov && ov.classList.contains('hide')) {
+    over({
+      reason: G.lastReason || 'crash',
+      score: Math.floor(G.score) + G.coins * G.cfg.coinScore,
+      distance: Math.floor(G.player.z),
+      coins: G.coins,
+      stats: G.stats
+    });
+  }
+});
+
+// Ambiance audio déclenchée à la première interaction utilisateur (politique autoplay des navigateurs mobiles)
+const startAmbientOnInteraction = () => {
+  initAudio();
+  if (!bgmMute && G.state !== 'running') startAmbientMenuBGM();
+};
+window.addEventListener('pointerdown', startAmbientOnInteraction, { once: true });
+
+// Service Worker v6 avec Network-First pour éliminer le cache obsolète sur Chrome Mobile
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=6.0')
+    .then(reg => {
+      if (reg.update) reg.update();
+    })
+    .catch(() => {});
 }
