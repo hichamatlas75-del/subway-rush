@@ -1023,6 +1023,113 @@ button.m:disabled {
   100% { opacity: 0; transform: translateX(-50%) translateY(-25px); }
 }
 
+/* ---------------- BADGE VILLE DU MONDE & BANNIÈRE WORLD TOUR ---------------- */
+.hud-dist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hud-city-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 99px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--cyan);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: all 0.35s ease;
+}
+
+.hud-city-pill.tokyo {
+  color: #ff758f;
+  border-color: rgba(255, 117, 143, 0.55);
+  box-shadow: 0 0 12px rgba(255, 117, 143, 0.35);
+}
+
+.hud-city-pill.rio {
+  color: #ffd166;
+  border-color: rgba(255, 209, 102, 0.55);
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.35);
+}
+
+.hud-city-pill.cyber {
+  color: #2de2e6;
+  border-color: rgba(45, 226, 230, 0.55);
+  box-shadow: 0 0 12px rgba(45, 226, 230, 0.35);
+}
+
+.hud-city-pill.depot {
+  color: #ff9f1c;
+  border-color: rgba(255, 159, 28, 0.55);
+  box-shadow: 0 0 12px rgba(255, 159, 28, 0.35);
+}
+
+.world-tour-banner {
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: radial-gradient(circle at center, rgba(18, 24, 60, 0.96) 0%, rgba(7, 9, 24, 0.98) 100%);
+  border: 2px solid var(--gold);
+  border-radius: 26px;
+  padding: 16px 36px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 35px var(--gold-glow);
+  pointer-events: none;
+  animation: worldTourFlyIn 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.wt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(255, 210, 63, 0.12);
+  border: 1px solid rgba(255, 210, 63, 0.3);
+  padding: 4px 14px;
+  border-radius: 99px;
+  margin-bottom: 6px;
+}
+
+.wt-title {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+  margin-bottom: 4px;
+}
+
+.wt-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@keyframes worldTourFlyIn {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.8); }
+  12%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.06); }
+  22%  { transform: translateX(-50%) translateY(0) scale(1); }
+  82%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-35px) scale(0.92); }
+}
+
 /* ---------------- BARRE DE HEADSTART / DÉPART TURBO ---------------- */
 .headstart-bar {
   display: flex;

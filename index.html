@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Subway Rush HD — Hicham.Hub</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=6.0">
+  <link rel="stylesheet" href="style.css?v=7.0">
 </head>
 <body>
   <canvas id="c"></canvas>
@@ -22,7 +22,10 @@
         <div id="sc">0</div>
         <div id="mult-pill" class="mult-pill">×1</div>
       </div>
-      <div id="ds">0 m</div>
+      <div class="hud-dist-row">
+        <div id="ds">0 m</div>
+        <div id="hud-city" class="hud-city-pill depot">🚇 DÉPÔT</div>
+      </div>
     </div>
 
     <!-- Jauge d'Éveil Anime 覚醒 -->
@@ -44,6 +47,13 @@
   <div id="pu"></div>
   <div id="toast"></div>
   <div id="milestone-banner" class="milestone-banner hide"></div>
+
+  <!-- Bannière Subway World Tour Clone -->
+  <div id="world-tour-banner" class="world-tour-banner hide">
+    <div class="wt-badge">✈️ SUBWAY WORLD TOUR</div>
+    <div class="wt-title" id="wt-title">TOKYO 🌸</div>
+    <div class="wt-sub" id="wt-sub">Portiques Torii & Cerisiers Sakura</div>
+  </div>
 
   <!-- Boutons Flottants en jeu -->
   <button class="ib" id="bp" aria-label="Pause" title="Pause (P)">⏸</button>
@@ -258,7 +268,7 @@
     </div>
   </div>
 
-  <script src="engine.js?v=6.0"></script>
-  <script src="app.js?v=6.0"></script>
+  <script src="engine.js?v=7.0"></script>
+  <script src="app.js?v=7.0"></script>
 </body>
 </html>

@@ -85,14 +85,121 @@ function applyUpgradedDurations() {
 }
 applyUpgradedDurations();
 
-/* Palettes Atmosphériques (Coucher de Soleil, Cyberpunk Nuit, Métropole Jour) */
-const THS = [
-  { top: [255, 110, 90], hor: [255, 205, 150], side: [80, 64, 96], trk: [96, 88, 110], bld: [130, 84, 124] },
-  { top: [8, 12, 38], hor: [70, 56, 130], side: [26, 26, 52], trk: [44, 46, 72], bld: [46, 44, 100] },
-  { top: [64, 150, 238], hor: [205, 232, 255], side: [100, 156, 112], trk: [124, 128, 142], bld: [176, 186, 206] }
+/* ---------- Palettes & Maquettes World Tour (Clones Subway Surfers) ---------- */
+const MAQUETTES = {
+  depot: {
+    id: 'depot',
+    name: 'DÉPÔT CLASSIQUE',
+    tag: '🚇 DÉPÔT',
+    flag: '🚇',
+    sub: 'Voies de Triage & Briques Rouges',
+    palette: {
+      top: [35, 48, 75],
+      hor: [215, 145, 95],
+      side: [55, 50, 62],
+      trk: [80, 75, 90],
+      bld: [140, 65, 48]
+    }
+  },
+  tokyo: {
+    id: 'tokyo',
+    name: 'TOKYO WORLD TOUR',
+    tag: '🌸 TOKYO',
+    flag: '🌸',
+    sub: 'Portiques Torii & Cerisiers Sakura',
+    palette: {
+      top: [48, 22, 78],
+      hor: [255, 145, 180],
+      side: [46, 32, 60],
+      trk: [85, 80, 100],
+      bld: [78, 42, 98]
+    }
+  },
+  rio: {
+    id: 'rio',
+    name: 'RIO DE JANEIRO',
+    tag: '🌴 RIO',
+    flag: '🌴',
+    sub: 'Plage & Favelas au Coucher de Soleil',
+    palette: {
+      top: [235, 75, 40],
+      hor: [255, 205, 85],
+      side: [85, 55, 35],
+      trk: [115, 92, 68],
+      bld: [195, 90, 55]
+    }
+  },
+  cyber: {
+    id: 'cyber',
+    name: 'CYBER MÉTROPOLE',
+    tag: '⚡ CYBER',
+    flag: '⚡',
+    sub: 'Nuit Électrique & Lévitation Maglev',
+    palette: {
+      top: [8, 12, 38],
+      hor: [75, 45, 140],
+      side: [22, 24, 48],
+      trk: [42, 44, 70],
+      bld: [46, 42, 98]
+    }
+  }
+};
+
+const MAQUETTE_SEQUENCE = [
+  { id: 'depot', start: 0, end: 1200 },
+  { id: 'tokyo', start: 1200, end: 2500 },
+  { id: 'rio', start: 2500, end: 3800 },
+  { id: 'cyber', start: 3800, end: 5200 }
 ];
 
-const T = JSON.parse(JSON.stringify(THS[0]));
+function getMaquetteAtZ(z) {
+  const c = ((z % 5200) + 5200) % 5200;
+  for (const m of MAQUETTE_SEQUENCE) {
+    if (c >= m.start && c < m.end) return m.id;
+  }
+  return 'depot';
+}
+
+let currentMaquetteId = 'depot';
+const WT_PARTICLES = [];
+
+function playWorldTourFanfare() {
+  if (sfxMute) return;
+  initAudio();
+  if (!AC) return;
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((freq, idx) => {
+    setTimeout(() => {
+      snd(freq, freq * 1.01, 0.28, 'triangle', 0.12);
+    }, idx * 95);
+  });
+}
+
+function triggerWorldTourChange(newId, prevId) {
+  const mq = MAQUETTES[newId];
+  if (!mq) return;
+  const hudCity = $('hud-city');
+  if (hudCity) {
+    hudCity.className = `hud-city-pill ${newId}`;
+    hudCity.textContent = mq.tag;
+  }
+  const b = $('world-tour-banner');
+  if (b) {
+    if ($('wt-title')) $('wt-title').textContent = mq.name + ' ' + mq.flag;
+    if ($('wt-sub')) $('wt-sub').textContent = mq.sub;
+    b.classList.remove('hide');
+    b.style.animation = 'none';
+    void b.offsetWidth;
+    b.style.animation = '';
+    setTimeout(() => { if (b) b.classList.add('hide'); }, 3200);
+  }
+  playWorldTourFanfare();
+  const col = newId === 'tokyo' ? '#ff758f' : newId === 'rio' ? '#ffd166' : newId === 'cyber' ? '#2de2e6' : '#ff9f1c';
+  burst(W / 2, H * 0.35, 30, col, 4.5, 1.2);
+  burst(W / 2, H * 0.35, 20, '#ffffff', 3.5, 1.0);
+}
+
+const T = JSON.parse(JSON.stringify(MAQUETTES.depot.palette));
 
 const EM = { magnet: '🧲', sneakers: '👟', multiplier: '×2', jetpack: '🚀', hoverboard: '🛹' },
       TX = {
@@ -567,13 +674,46 @@ function train(o) {
         z0 = o.z, z1 = z0 + o.length,
         zs = Math.max(z0, camZ + 0.7), d = zs - camZ;
 
-  const LIVERIES = [
-    { base: [214, 48, 49], stripe: [255, 210, 63], text: 'EXPRESS', roof: [70, 75, 90] },
-    { base: [9, 132, 227], stripe: [45, 226, 230], text: 'METRO 1', roof: [65, 75, 95] },
-    { base: [232, 160, 32], stripe: [255, 255, 255], text: 'SUBWAY', roof: [85, 75, 65] },
-    { base: [0, 184, 148], stripe: [255, 210, 63], text: 'CITY RAPID', roof: [60, 80, 75] }
-  ];
-  const liv = LIVERIES[o.variant % 4];
+  const mq = getMaquetteAtZ(o.z);
+
+  let liv;
+  if (mq === 'tokyo') {
+    // Shinkansen / Train grande vitesse japonais (Blanc nacré, Rose Sakura / Cyan)
+    liv = {
+      base: [248, 249, 252],
+      stripe: (o.variant % 2 === 0) ? [255, 77, 109] : [0, 245, 212],
+      text: '新幹線',
+      roof: [215, 220, 230],
+      isShinkansen: true
+    };
+  } else if (mq === 'rio') {
+    // Train de Carnaval Rio (Jaune Soleil & Vert Émeraude)
+    liv = {
+      base: [255, 209, 102],
+      stripe: [6, 214, 160],
+      text: 'CARNAVAL',
+      roof: [230, 155, 50],
+      isCarnival: true
+    };
+  } else if (mq === 'cyber') {
+    // Maglev Cyberpunk (Noir Titane & Lignes Plasma Cyan)
+    liv = {
+      base: [26, 28, 42],
+      stripe: [45, 226, 230],
+      text: 'MAGLEV',
+      roof: [18, 20, 32],
+      isCyber: true
+    };
+  } else {
+    // Dépôt classique Subway Surfers vintage
+    const LIVERIES = [
+      { base: [214, 48, 49], stripe: [255, 210, 63], text: 'EXPRESS', roof: [70, 75, 90] },
+      { base: [9, 132, 227], stripe: [45, 226, 230], text: 'METRO 1', roof: [65, 75, 95] },
+      { base: [232, 160, 32], stripe: [255, 255, 255], text: 'SUBWAY', roof: [85, 75, 65] },
+      { base: [0, 184, 148], stripe: [255, 210, 63], text: 'CITY RAPID', roof: [60, 80, 75] }
+    ];
+    liv = LIVERIES[o.variant % 4];
+  }
 
   // Caisse principale
   box(x0, x1, 0, 3.2, z0, z1, liv.base);
@@ -588,7 +728,7 @@ function train(o) {
   // Toit avec unités de climatisation
   if (camY > 3.2 && z1 > zs) {
     for (let az = z0 + 3; az < z1 - 3; az += 6) {
-      if (az > camZ + 0.7) box(x0 + 0.28, x1 - 0.28, 3.2, 3.48, az, az + 2.2, [80, 85, 95]);
+      if (az > camZ + 0.7) box(x0 + 0.28, x1 - 0.28, 3.2, 3.48, az, az + 2.2, liv.roof);
     }
   }
 
@@ -597,20 +737,33 @@ function train(o) {
     const sx = camX < x0 ? x0 : x1;
     poly([pr(sx, 1.75, zs), pr(sx, 1.75, z1), pr(sx, 2.7, z1), pr(sx, 2.7, zs)], fg([22, 34, 55], 0.95, d));
     poly([pr(sx, 1.15, zs), pr(sx, 1.15, z1), pr(sx, 1.5, z1), pr(sx, 1.5, zs)], fg(liv.stripe, 1.05, d));
+
+    // Décoration latérale supplémentaire
+    if (liv.isShinkansen && z1 > zs + 4) {
+      const qDecal = pr(sx, 2.1, (zs + z1) / 2);
+      if (qDecal[2] > 0) {
+        cx.font = `900 ${Math.max(7, 0.38 * qDecal[2])}px sans-serif`;
+        cx.fillStyle = fg(liv.stripe, 1.1, d);
+        cx.textAlign = 'center';
+        cx.fillText('超速', qDecal[0], qDecal[1]);
+      }
+    } else if (liv.isCarnival && z1 > zs + 4) {
+      poly([pr(sx, 0.65, zs), pr(sx, 0.65, z1), pr(sx, 0.95, z1), pr(sx, 0.95, zs)], fg([17, 138, 178], 1.05, d));
+    }
   }
 
   // Face Avant (Phares LED, Grille de pare-chocs, Pare-brise teinté)
   if (z0 > camZ + 0.7) {
     poly([pr(x0 + 0.16, 1.65, z0), pr(x1 - 0.16, 1.65, z0), pr(x1 - 0.16, 2.85, z0), pr(x0 + 0.16, 2.85, z0)], fg([18, 28, 48], 1, d));
     poly([pr(x0 + 0.25, 2.0, z0), pr(x0 + 0.6, 2.0, z0), pr(x1 - 0.35, 2.75, z0), pr(x1 - 0.7, 2.75, z0)], 'rgba(255, 255, 255, 0.22)');
-    poly([pr(x0 + 0.25, 2.9, z0), pr(x1 - 0.25, 2.9, z0), pr(x1 - 0.25, 3.12, z0), pr(x0 + 0.25, 3.12, z0)], '#ff9f1c');
+    poly([pr(x0 + 0.25, 2.9, z0), pr(x1 - 0.25, 2.9, z0), pr(x1 - 0.25, 3.12, z0), pr(x0 + 0.25, 3.12, z0)], liv.isShinkansen ? '#ff4d6d' : '#ff9f1c');
     poly([pr(x0 + 0.08, 1.15, z0), pr(x1 - 0.08, 1.15, z0), pr(x1 - 0.08, 1.45, z0), pr(x0 + 0.08, 1.45, z0)], fg(liv.stripe, 1.1, d));
 
     for (const k of [-1, 1]) {
       const q = pr(o.x + k * 0.74, 0.8, z0);
       cx.fillStyle = 'rgba(255, 248, 180, 0.38)';
       cx.beginPath(); cx.arc(q[0], q[1], 0.34 * q[2], 0, Math.PI * 2); cx.fill();
-      cx.fillStyle = '#fffae0';
+      cx.fillStyle = liv.isCyber ? '#2de2e6' : '#fffae0';
       cx.beginPath(); cx.arc(q[0], q[1], 0.18 * q[2], 0, Math.PI * 2); cx.fill();
     }
   }
@@ -1412,32 +1565,329 @@ function addPopupText(x, y, text, color = '#ffd23f') {
   POPUPS.push({ x, y, text, color, life: 0.85, maxLife: 0.85 });
 }
 
+/* ---------- Modèles 3D des Maquettes World Tour Clone Subway Surfers ---------- */
+
+// 1. Portiques de Caténaire & Arches Spécifiques à la Ville
+function drawMaquettePylon(z, mq, lw) {
+  const HW = 4.2;
+  if (mq === 'tokyo') {
+    // Portique Torii Shinto Japonais (鳥居) en vermillon et noir
+    box(-HW - 0.75, -HW - 0.45, 0, 6.6, z, z + 0.35, [217, 4, 41]);
+    box(HW + 0.45, HW + 0.75, 0, 6.6, z, z + 0.35, [217, 4, 41]);
+    box(-HW - 0.82, -HW - 0.38, 0, 0.7, z - 0.04, z + 0.39, [22, 22, 28]);
+    box(HW + 0.38, HW + 0.82, 0, 0.7, z - 0.04, z + 0.39, [22, 22, 28]);
+    box(-HW - 0.6, HW + 0.6, 5.2, 5.48, z, z + 0.28, [195, 18, 38]);
+    box(-HW - 1.25, HW + 1.25, 6.35, 6.75, z - 0.06, z + 0.41, [180, 15, 32]);
+    box(-HW - 1.35, HW + 1.35, 6.7, 6.9, z - 0.08, z + 0.43, [20, 20, 26]);
+    box(-0.35, 0.35, 5.48, 6.35, z + 0.08, z + 0.22, [255, 215, 0]);
+
+    // 2 Lanternes Chōchin traditionnelles luminescentes suspendues (提灯)
+    if (z > camZ + 0.8) {
+      for (const lx of [-2.4, 2.4]) {
+        const qL = pr(lx, 4.6, z);
+        if (qL[2] > 0) {
+          cx.fillStyle = 'rgba(255, 60, 60, 0.28)';
+          cx.beginPath(); cx.arc(qL[0], qL[1], 0.42 * qL[2], 0, Math.PI * 2); cx.fill();
+          cx.fillStyle = '#ff2a2a';
+          cx.beginPath(); cx.ellipse(qL[0], qL[1], 0.22 * qL[2], 0.32 * qL[2], 0, 0, Math.PI * 2); cx.fill();
+          cx.fillStyle = '#fff0f0';
+          cx.fillRect(qL[0] - 0.14 * qL[2], qL[1] - 0.08 * qL[2], 0.28 * qL[2], 0.16 * qL[2]);
+          cx.fillStyle = '#111';
+          cx.fillRect(qL[0] - 0.10 * qL[2], qL[1] - 0.34 * qL[2], 0.20 * qL[2], 0.06 * qL[2]);
+          cx.fillRect(qL[0] - 0.10 * qL[2], qL[1] + 0.28 * qL[2], 0.20 * qL[2], 0.06 * qL[2]);
+        }
+      }
+    }
+  } else if (mq === 'rio') {
+    // Arche Tropicale en Bambou & Guirlandes de Carnaval
+    box(-HW - 0.7, -HW - 0.45, 0, 6.4, z, z + 0.3, [160, 115, 75]);
+    box(HW + 0.45, HW + 0.7, 0, 6.4, z, z + 0.3, [160, 115, 75]);
+    box(-HW - 0.8, HW + 0.8, 6.1, 6.4, z, z + 0.32, [145, 100, 65]);
+
+    if (z > camZ + 0.8) {
+      const flagColors = ['#ffd166', '#06d6a0', '#118ab2', '#ef476f', '#ffd166'];
+      for (let i = 0; i < 5; i++) {
+        const fx = -3.2 + i * 1.6;
+        const qF = pr(fx, 5.6 - Math.sin((i / 4) * Math.PI) * 0.4, z);
+        cx.fillStyle = flagColors[i];
+        cx.beginPath();
+        cx.moveTo(qF[0] - 0.18 * qF[2], qF[1]);
+        cx.lineTo(qF[0] + 0.18 * qF[2], qF[1]);
+        cx.lineTo(qF[0], qF[1] + 0.28 * qF[2]);
+        cx.closePath();
+        cx.fill();
+      }
+    }
+  } else if (mq === 'cyber') {
+    // Portique Laser Cyberpunk
+    box(-HW - 0.8, -HW - 0.55, 0, 6.6, z, z + 0.3, [20, 24, 38]);
+    box(HW + 0.55, HW + 0.8, 0, 6.6, z, z + 0.3, [20, 24, 38]);
+    box(-HW - 0.8, HW + 0.8, 6.2, 6.55, z, z + 0.3, [25, 30, 48]);
+    if (z > camZ + 0.8) {
+      const q1 = pr(-HW - 0.5, 6.5, z), q2 = pr(HW + 0.5, 6.5, z);
+      cx.strokeStyle = '#00f5d4';
+      cx.lineWidth = Math.max(1.5, 0.04 * q1[2]);
+      cx.beginPath(); cx.moveTo(q1[0], q1[1]); cx.lineTo(q2[0], q2[1]); cx.stroke();
+    }
+  } else {
+    // Portique Industriel Classique Dépôt Subway Surfers
+    box(-HW - 0.9, -HW - 0.65, 0, 6.5, z, z + 0.3, [60, 65, 78]);
+    box(HW + 0.65, HW + 0.9, 0, 6.5, z, z + 0.3, [60, 65, 78]);
+    box(-HW - 0.9, HW + 0.9, 6.15, 6.5, z, z + 0.3, [55, 60, 72]);
+
+    if (z > camZ + 0.8) {
+      for (let s = -3.5; s < 3.5; s += 0.8) {
+        const qs = pr(s, 6.32, z);
+        cx.fillStyle = Math.floor(Math.abs(s) / 0.8) % 2 === 0 ? '#ffd23f' : '#111';
+        cx.fillRect(qs[0] - 0.15 * qs[2], qs[1] - 0.08 * qs[2], 0.30 * qs[2], 0.16 * qs[2]);
+      }
+
+      for (const l of [-1, 0, 1]) {
+        const qSig = pr(l * lw, 5.75, z);
+        cx.fillStyle = '#0f172a';
+        cx.beginPath(); cx.arc(qSig[0], qSig[1], 0.24 * qSig[2], 0, Math.PI * 2); cx.fill();
+        cx.fillStyle = (l === 0 ? '#05c46b' : '#ff3864');
+        cx.beginPath(); cx.arc(qSig[0], qSig[1], 0.13 * qSig[2], 0, Math.PI * 2); cx.fill();
+      }
+    }
+  }
+}
+
+// 2. Décors Latéraux 3D Spécifiques par Ville
+function drawMaquetteSideScenery(sd, z, i, mq) {
+  if (mq === 'tokyo') {
+    if (i % 2 === 0) {
+      // Cerisier Japonais Sakura 3D (桜)
+      const tx = sd * (6.6 + (i % 3) * 1.2);
+      box(tx - 0.35, tx + 0.35, 0, 4.2, z, z + 0.7, [90, 55, 40]);
+      if (z > camZ + 0.8) {
+        const qBase = pr(tx, 4.2, z), s = qBase[2];
+        const puffs = [
+          { ox: 0, oy: -1.2, r: 1.8, c: '#ff4d6d' },
+          { ox: -1.1, oy: -0.6, r: 1.5, c: '#ff758f' },
+          { ox: 1.1, oy: -0.6, r: 1.5, c: '#ffb3c1' },
+          { ox: 0, oy: -1.8, r: 1.4, c: '#fff0f3' }
+        ];
+        for (const p of puffs) {
+          cx.fillStyle = p.c;
+          cx.beginPath();
+          cx.arc(qBase[0] + p.ox * s, qBase[1] + p.oy * s, p.r * s, 0, Math.PI * 2);
+          cx.fill();
+        }
+      }
+    } else {
+      // Bâtiment Pagode & Poteau Lanterne
+      const bx = sd < 0 ? -12.5 : 8.5;
+      box(bx, bx + 4.8, 0, 9 + (i % 4) * 3, z, z + 10, [65, 35, 80]);
+      const lx = sd * 5.6;
+      box(lx - 0.15, lx + 0.15, 0, 3.2, z, z + 0.3, [50, 45, 55]);
+      if (z > camZ + 0.8) {
+        const q = pr(lx, 3.2, z);
+        cx.fillStyle = '#ff2a2a';
+        cx.beginPath(); cx.arc(q[0], q[1], 0.28 * q[2], 0, Math.PI * 2); cx.fill();
+        cx.fillStyle = 'rgba(255, 60, 60, 0.3)';
+        cx.beginPath(); cx.arc(q[0], q[1], 0.55 * q[2], 0, Math.PI * 2); cx.fill();
+      }
+    }
+  } else if (mq === 'rio') {
+    if (i % 2 === 0) {
+      // Palmier Tropical 3D (Copacabana)
+      const px = sd * (6.4 + (i % 3) * 1.3);
+      box(px - 0.3, px + 0.3, 0, 5.5, z, z + 0.6, [140, 95, 60]);
+      if (z > camZ + 0.8) {
+        const qTop = pr(px, 5.5, z), s = qTop[2];
+        const frondColors = ['#2d6a4f', '#52b788', '#74c69d', '#40916c'];
+        for (let a = 0; a < 7; a++) {
+          const angle = (a / 7) * Math.PI * 2 + (i * 0.3);
+          const fx = qTop[0] + Math.cos(angle) * 2.2 * s;
+          const fy = qTop[1] + (Math.sin(angle) * 0.8 + 0.6) * s;
+          cx.strokeStyle = frondColors[a % 4];
+          cx.lineWidth = Math.max(2, 0.08 * s);
+          cx.beginPath();
+          cx.moveTo(qTop[0], qTop[1]);
+          cx.quadraticCurveTo(qTop[0] + Math.cos(angle) * 1.2 * s, qTop[1] - 0.4 * s, fx, fy);
+          cx.stroke();
+        }
+      }
+    } else {
+      // Maisons de Favela Colorées Superposées
+      const fx = sd < 0 ? -12 : 8;
+      const favColors = [
+        [255, 209, 102], [6, 214, 160], [239, 71, 111], [17, 138, 178], [247, 140, 107]
+      ];
+      const col = favColors[(i + (sd < 0 ? 0 : 2)) % favColors.length];
+      box(fx, fx + 4.5, 0, 4.5 + (i % 3) * 2.5, z, z + 8, col);
+      if (i % 2 === 0) {
+        const col2 = favColors[(i + 1) % favColors.length];
+        box(fx + 0.6, fx + 3.8, 4.5 + (i % 3) * 2.5, 8.5 + (i % 3) * 2.5, z + 1, z + 7, col2);
+      }
+    }
+  } else if (mq === 'cyber') {
+    // Tours de Verre & Piliers Néon
+    const cxP = sd < 0 ? -12 : 8;
+    box(cxP, cxP + 4.5, 0, 10 + (i % 4) * 4, z, z + 9, [32, 38, 62]);
+    const lx = sd * 5.6;
+    box(lx - 0.15, lx + 0.15, 0, 5.0, z, z + 0.3, [20, 24, 38]);
+    if (z > camZ + 0.8) {
+      const q = pr(lx, 5.0, z);
+      cx.fillStyle = '#2de2e6';
+      cx.beginPath(); cx.arc(q[0], q[1], 0.22 * q[2], 0, Math.PI * 2); cx.fill();
+    }
+  } else {
+    // Dépôt classique : Conteneurs Maritimes 3D & Murs Brique avec Graffitis
+    if (i % 2 === 0) {
+      const cxPos = sd * (6.6 + (i % 2) * 1.5);
+      const containerColors = [
+        [9, 132, 227], [225, 112, 85], [0, 184, 148], [214, 48, 49]
+      ];
+      const col = containerColors[(i + (sd < 0 ? 1 : 0)) % containerColors.length];
+      box(cxPos - 1.4, cxPos + 1.4, 0, 2.7, z, z + 8.5, col);
+      if (i % 3 === 0) {
+        const col2 = containerColors[(i + 2) % containerColors.length];
+        box(cxPos - 1.35, cxPos + 1.35, 2.7, 5.35, z + 0.5, z + 8.0, col2);
+      }
+    } else {
+      const wx = sd < 0 ? -12 : 7;
+      box(wx, wx + 5, 0, 5 + (i % 3) * 2.5, z, z + 9, [145, 60, 45]);
+      if (z > camZ + 0.8) {
+        const q = pr(sd * 6.5, 2.5, z + 4);
+        if (q[2] > 0) {
+          const tags = ['SUBWAY', 'RUSH', 'TAG', 'FAST', '★ 77'];
+          const tagCol = ['#ffd23f', '#ff2a2a', '#00f5d4', '#fff'][i % 4];
+          cx.font = `900 ${Math.max(8, 0.45 * q[2])}px sans-serif`;
+          cx.fillStyle = tagCol;
+          cx.textAlign = 'center';
+          cx.fillText(tags[i % tags.length], q[0], q[1]);
+        }
+      }
+    }
+  }
+}
+
+// 3. Particules Environnementales (Pétales de Cerisier Sakura, Poussière Solaire, Étincelles Cyber)
+function drawEnvironmentalParticles(dt, mq) {
+  if (mq === 'tokyo') {
+    while (WT_PARTICLES.length < 32) {
+      WT_PARTICLES.push({
+        x: Math.random() * W,
+        y: -20 - Math.random() * 80,
+        size: 5 + Math.random() * 6,
+        speedY: 40 + Math.random() * 50,
+        speedX: 20 + Math.random() * 30,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 3,
+        wobble: Math.random() * 10,
+        color: Math.random() > 0.4 ? '#ff758f' : '#ffb3c1'
+      });
+    }
+  } else if (mq === 'rio') {
+    while (WT_PARTICLES.length < 24) {
+      WT_PARTICLES.push({
+        x: Math.random() * W,
+        y: -10 - Math.random() * 50,
+        size: 3 + Math.random() * 4,
+        speedY: 25 + Math.random() * 35,
+        speedX: (Math.random() - 0.5) * 20,
+        rot: Math.random() * 6.28,
+        rotSpeed: 2,
+        wobble: Math.random() * 5,
+        color: Math.random() > 0.5 ? '#ffd166' : '#fff'
+      });
+    }
+  } else if (mq === 'cyber') {
+    while (WT_PARTICLES.length < 24) {
+      WT_PARTICLES.push({
+        x: Math.random() * W,
+        y: H + 10 + Math.random() * 50,
+        size: 2.5 + Math.random() * 3.5,
+        speedY: -(30 + Math.random() * 40),
+        speedX: (Math.random() - 0.5) * 15,
+        rot: 0,
+        rotSpeed: 0,
+        wobble: Math.random() * 5,
+        color: '#2de2e6'
+      });
+    }
+  } else {
+    WT_PARTICLES.length = 0;
+  }
+
+  for (let i = WT_PARTICLES.length - 1; i >= 0; i--) {
+    const p = WT_PARTICLES[i];
+    p.y += p.speedY * dt;
+    p.x += (p.speedX + Math.sin(tt * 2.5 + p.wobble) * 20) * dt;
+    p.rot += p.rotSpeed * dt;
+    if (p.y > H + 25 || p.y < -30 || p.x > W + 40 || p.x < -40) {
+      WT_PARTICLES.splice(i, 1);
+      continue;
+    }
+    cx.save();
+    cx.translate(p.x, p.y);
+    cx.rotate(p.rot);
+    cx.fillStyle = p.color;
+    cx.globalAlpha = 0.85;
+    cx.beginPath();
+    cx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2);
+    cx.fill();
+    cx.restore();
+  }
+  cx.globalAlpha = 1;
+}
+
 /* ---------- Rendu de Scène 3D Haute Définition ---------- */
 function scene(st, dt) {
   const p = st.player, lw = st.laneWidth, HW = 4.2, zb = camZ + 140;
+  const currentMq = getMaquetteAtZ(pz);
 
   // 1. Dégradé de Ciel Atmosphérique
   let g = cx.createLinearGradient(0, 0, 0, HOR);
   g.addColorStop(0, rgb(T.top)); g.addColorStop(1, rgb(T.hor));
   cx.fillStyle = g; cx.fillRect(-30, -30, W + 60, HOR + 30);
 
-  // 2. Soleil / Lune
-  g = cx.createRadialGradient(W * 0.7, HOR * 0.55, 0, W * 0.7, HOR * 0.55, F * 0.24);
-  g.addColorStop(0, 'rgba(255,255,255,0.85)');
-  g.addColorStop(0.3, 'rgba(255,255,255,0.22)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
+  // 2. Soleil / Lune Spécifique à la Ville
+  if (currentMq === 'tokyo') {
+    // Soleil levant géant rose/pourpre
+    g = cx.createRadialGradient(W * 0.5, HOR * 0.52, 0, W * 0.5, HOR * 0.52, F * 0.32);
+    g.addColorStop(0, 'rgba(255, 110, 140, 0.95)');
+    g.addColorStop(0.35, 'rgba(255, 145, 180, 0.4)');
+    g.addColorStop(1, 'rgba(255, 145, 180, 0)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
+  } else if (currentMq === 'rio') {
+    // Coucher de soleil tropical doré éclatant
+    g = cx.createRadialGradient(W * 0.65, HOR * 0.52, 0, W * 0.65, HOR * 0.52, F * 0.38);
+    g.addColorStop(0, 'rgba(255, 205, 85, 0.95)');
+    g.addColorStop(0.4, 'rgba(255, 130, 45, 0.45)');
+    g.addColorStop(1, 'rgba(255, 130, 45, 0)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
+  } else if (currentMq === 'cyber') {
+    // Lune cybernétique cyan
+    g = cx.createRadialGradient(W * 0.75, HOR * 0.45, 0, W * 0.75, HOR * 0.45, F * 0.22);
+    g.addColorStop(0, 'rgba(45, 226, 230, 0.85)');
+    g.addColorStop(0.4, 'rgba(45, 226, 230, 0.25)');
+    g.addColorStop(1, 'rgba(45, 226, 230, 0)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
+  } else {
+    // Soleil de crépuscule classique
+    g = cx.createRadialGradient(W * 0.7, HOR * 0.55, 0, W * 0.7, HOR * 0.55, F * 0.24);
+    g.addColorStop(0, 'rgba(255, 235, 180, 0.88)');
+    g.addColorStop(0.3, 'rgba(255, 205, 150, 0.25)');
+    g.addColorStop(1, 'rgba(255, 205, 150, 0)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
+  }
 
-  // 3. Skyline Urbaine avec Fenêtres
+  // 3. Skyline Urbaine Spécifique à la Ville
   cx.fillStyle = fg(T.bld, 0.5, 95);
   {
     const sh = camX * 8, b = Math.floor(sh / 36);
     for (let i = -1; i * 36 < W + 36; i++) {
-      const bH = H * 0.14 * (0.6 + hs(b + i) * 0.8);
+      let bH = H * 0.14 * (0.6 + hs(b + i) * 0.8);
       const bx = i * 36 - (sh - b * 36);
+      if (currentMq === 'rio') {
+        bH = H * 0.16 * (0.8 + Math.sin((i + b * 0.2) * 0.3) * 0.5);
+      }
       cx.fillRect(bx, HOR - 8 - bH, 36, bH + 8);
 
-      cx.fillStyle = 'rgba(255, 235, 150, 0.35)';
+      cx.fillStyle = currentMq === 'cyber' ? 'rgba(45, 226, 230, 0.45)' : 'rgba(255, 235, 150, 0.35)';
       for (let wy = HOR - bH + 6; wy < HOR - 6; wy += 9) {
         if (hs(b + i + wy) > 0.4) cx.fillRect(bx + 4, wy, 4, 5);
         if (hs(b + i + wy * 2) > 0.4) cx.fillRect(bx + 14, wy, 4, 5);
@@ -1452,12 +1902,13 @@ function scene(st, dt) {
   g.addColorStop(0, rgb(T.hor)); g.addColorStop(1, rgb(T.side));
   cx.fillStyle = g; cx.fillRect(-30, HOR - 1, W + 60, H - HOR + 30);
 
-  // 5. Bâtiments 3D Proches en Bordure
+  // 5. Bâtiments & Décors 3D Proches Spécifiques (Arbres Sakura, Palmiers, Conteneurs, Favelas)
   const i0 = Math.floor(camZ / 12);
   for (let i = i0 + 11; i >= i0; i--) {
+    const zPos = i * 12;
+    const mq = getMaquetteAtZ(zPos);
     for (const sd of [-1, 1]) {
-      const h = hs(i * 2 + sd + 9), a = sd < 0 ? -(6 + h * 4) - 4 : 6 + h * 4, c = T.bld.map(v => v * (0.8 + h * 0.5));
-      box(a, a + 4, 0, 5 + hs(i * 3 + sd) * 16, i * 12, i * 12 + 9, c);
+      drawMaquetteSideScenery(sd, zPos, i, mq);
     }
   }
 
@@ -1485,29 +1936,18 @@ function scene(st, dt) {
   }
 
   // 9. Câbles Aériens de Caténaire en Cuivre (Lignes 3D continues)
-  cx.strokeStyle = 'rgba(180, 185, 200, 0.45)';
+  cx.strokeStyle = currentMq === 'cyber' ? 'rgba(45, 226, 230, 0.55)' : 'rgba(180, 185, 200, 0.45)';
   cx.lineWidth = 1.2;
   for (const l of [-1, 0, 1]) {
     const q1 = pr(l * lw, 6.35, camZ + 0.7), q2 = pr(l * lw, 6.35, zb);
     cx.beginPath(); cx.moveTo(q1[0], q1[1]); cx.lineTo(q2[0], q2[1]); cx.stroke();
   }
 
-  // 10. Portiques Électriques & Feux Ferroviaires
+  // 10. Portiques Électriques / Torii / Arches Spécifiques
   const zPylon0 = Math.floor(camZ / 24) * 24;
   for (let z = zPylon0 + 120; z >= zPylon0; z -= 24) {
-    box(-HW - 0.9, -HW - 0.7, 0, 6.5, z, z + 0.28, [70, 75, 90]);
-    box(HW + 0.7, HW + 0.9, 0, 6.5, z, z + 0.28, [70, 75, 90]);
-    box(-HW - 0.9, HW + 0.9, 6.2, 6.5, z, z + 0.28, [65, 70, 85]);
-
-    if (z > camZ + 0.8) {
-      for (const l of [-1, 0, 1]) {
-        const qSig = pr(l * lw, 5.8, z);
-        cx.fillStyle = '#0f172a';
-        cx.beginPath(); cx.arc(qSig[0], qSig[1], 0.22 * qSig[2], 0, Math.PI * 2); cx.fill();
-        cx.fillStyle = (l === 0 ? '#05c46b' : '#ff3864');
-        cx.beginPath(); cx.arc(qSig[0], qSig[1], 0.12 * qSig[2], 0, Math.PI * 2); cx.fill();
-      }
-    }
+    const mq = getMaquetteAtZ(z);
+    drawMaquettePylon(z, mq, lw);
   }
 
   // 11. Objets triés par profondeur Z
@@ -1556,7 +1996,10 @@ function scene(st, dt) {
     else item(o);
   }
 
-  // 12. Particules & Textes
+  // 12. Particules Environnementales Spécifiques (Pétales Sakura, Poussière Solaire, etc.)
+  drawEnvironmentalParticles(dt, currentMq);
+
+  // 13. Particules d'Impact & Textes Flottants
   for (let i = PA.length - 1; i >= 0; i--) {
     const q = PA[i];
     q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 420 * dt; q.l -= dt;
@@ -1589,9 +2032,18 @@ function draw(st, dt) {
   camX += (p.x * 0.55 - camX) * Math.min(1, dt * 6);
   camY += (CY0 + Math.min(p.y, 7) * 0.35 - camY) * Math.min(1, dt * 4);
 
-  const tg = THS[Math.floor(st.distance / 1200) % 3];
+  // Détection & Transition de Maquette World Tour
+  const activeMqKey = getMaquetteAtZ(st.distance);
+  if (activeMqKey !== currentMaquetteId && st.status === 'running') {
+    const prev = currentMaquetteId;
+    currentMaquetteId = activeMqKey;
+    triggerWorldTourChange(activeMqKey, prev);
+  }
+
+  // Interpolation fluide de la palette atmosphérique
+  const tg = MAQUETTES[activeMqKey].palette;
   for (const k in T) {
-    T[k] = T[k].map((v, i) => v + (tg[k][i] - v) * Math.min(1, dt * 0.6));
+    T[k] = T[k].map((v, i) => v + (tg[k][i] - v) * Math.min(1, dt * 1.2));
   }
 
   cx.clearRect(0, 0, W, H);
@@ -1637,6 +2089,14 @@ function hud(st) {
     } else {
       hide($('boxes-count'));
     }
+  }
+
+  const curMq = MAQUETTES[currentMaquetteId] || MAQUETTES.depot;
+  const hudCity = $('hud-city');
+  if (hudCity && hudCity._lastId !== currentMaquetteId) {
+    hudCity._lastId = currentMaquetteId;
+    hudCity.className = `hud-city-pill ${currentMaquetteId}`;
+    hudCity.textContent = curMq.tag;
   }
 
   for (const k in EM) {
@@ -2322,6 +2782,19 @@ function play() {
   hide(menu); hide(ov); hide(ps); hide(shopModal); hide(missionsModal); hide(dailyModal); hide(mysteryModal); hide(settingsModal);
   if (ov) ov.style.display = '';
   banked = 0; revived = 0; combo = 0; PA.length = 0; POPUPS.length = 0; mysteryBoxesInRun = 0;
+  currentMaquetteId = 'depot';
+  WT_PARTICLES.length = 0;
+  for (const k in T) {
+    if (MAQUETTES.depot.palette[k]) {
+      T[k] = [...MAQUETTES.depot.palette[k]];
+    }
+  }
+  const hudCity = $('hud-city');
+  if (hudCity) {
+    hudCity._lastId = 'depot';
+    hudCity.className = 'hud-city-pill depot';
+    hudCity.textContent = MAQUETTES.depot.tag;
+  }
   stopAmbientMenuBGM();
   snd(440, 880, 0.12, 'triangle', 0.08);
   startBGM();
