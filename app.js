@@ -1,6 +1,6 @@
 /*!
- * Subway Rush — app.js
- * Moteur de rendu 3D Canvas, Synthétiseur Audio WebAPI, Particules & UI
+ * Subway Rush — app.js (Version Complète HD)
+ * Moteur de rendu 3D Canvas, Vedette Jake Cell-Shaded, Inspecteur + Chien, Audio WebAPI & UI
  */
 const $ = i => document.getElementById(i),
       cv = $('c'),
@@ -35,7 +35,7 @@ const THS = [
 ];
 
 const T = JSON.parse(JSON.stringify(THS[0])),
-      TC = [[200, 60, 60], [60, 130, 200], [232, 172, 50], [90, 170, 110]];
+      TC = [[214, 48, 49], [9, 132, 227], [2fd ? 232 : 243, 156, 18], [0, 184, 148]];
 
 const EM = { magnet: '🧲', sneakers: '👟', multiplier: '×2', jetpack: '🚀', hoverboard: '🛹' },
       TX = { magnet: '🧲 AIMANT', sneakers: '👟 SUPER BASKETS', multiplier: '×2 MULTIPLICATEUR', jetpack: '🚀 JETPACK', hoverboard: '🛹 HOVERBOARD' },
@@ -113,7 +113,8 @@ const fg = (c, sh, d) => {
 const rr = (x, y, w, h, r, f) => {
   cx.fillStyle = f;
   cx.beginPath();
-  cx.roundRect(x, y, w, h, r);
+  if (cx.roundRect) cx.roundRect(x, y, w, h, r);
+  else cx.rect(x, y, w, h);
   cx.fill();
 };
 
@@ -140,24 +141,31 @@ function box(x0, x1, y0, y1, z0, z1, c) {
   poly([a, b, e, f], fg(c, 0.9, d));
 }
 
-/* ---------- Objets 3D ---------- */
+/* ---------- Objets 3D (Trains Urbains, Rampes, Barrières, Items) ---------- */
 function train(o) {
   const x0 = o.x - o.halfWidth, x1 = o.x + o.halfWidth,
         z0 = o.z, z1 = z0 + o.length,
         zs = Math.max(z0, camZ + 0.7), d = zs - camZ;
-  box(x0, x1, 0, 3.2, z0, z1, TC[o.variant]);
+  const baseCol = [[214, 48, 49], [9, 132, 227], [232, 172, 50], [0, 184, 148]][o.variant % 4];
+  box(x0, x1, 0, 3.2, z0, z1, baseCol);
+
+  // Bandes latérales & vitres des wagons
   if (camX < x0 || camX > x1) {
     const sx = camX < x0 ? x0 : x1;
-    poly([pr(sx, 1.7, zs), pr(sx, 1.7, z1), pr(sx, 2.7, z1), pr(sx, 2.7, zs)], fg([28, 44, 70], 0.9, d));
+    poly([pr(sx, 1.75, zs), pr(sx, 1.75, z1), pr(sx, 2.65, z1), pr(sx, 2.65, zs)], fg([28, 44, 70], 0.95, d));
+    poly([pr(sx, 1.15, zs), pr(sx, 1.15, z1), pr(sx, 1.45, z1), pr(sx, 1.45, zs)], fg([255, 210, 63], 1, d));
   }
+
+  // Face avant du train (Pare-brise, bande jaune, phares LED)
   if (z0 > camZ + 0.7) {
-    poly([pr(x0 + 0.2, 1.7, z0), pr(x1 - 0.2, 1.7, z0), pr(x1 - 0.2, 2.8, z0), pr(x0 + 0.2, 2.8, z0)], fg([24, 38, 64], 1, d));
+    poly([pr(x0 + 0.18, 1.7, z0), pr(x1 - 0.18, 1.7, z0), pr(x1 - 0.18, 2.8, z0), pr(x0 + 0.18, 2.8, z0)], fg([20, 34, 58], 1, d));
+    poly([pr(x0 + 0.05, 1.15, z0), pr(x1 - 0.05, 1.15, z0), pr(x1 - 0.05, 1.42, z0), pr(x0 + 0.05, 1.42, z0)], fg([255, 210, 63], 1, d));
     for (const k of [-1, 1]) {
-      const q = pr(o.x + k * 0.7, 0.8, z0);
+      const q = pr(o.x + k * 0.72, 0.78, z0);
+      cx.fillStyle = 'rgba(255, 246, 192, 0.35)';
+      cx.beginPath(); cx.arc(q[0], q[1], 0.28 * q[2], 0, 7); cx.fill();
       cx.fillStyle = '#fff6c0';
-      cx.beginPath();
-      cx.arc(q[0], q[1], 0.16 * q[2], 0, 7);
-      cx.fill();
+      cx.beginPath(); cx.arc(q[0], q[1], 0.16 * q[2], 0, 7); cx.fill();
     }
   }
 }
@@ -228,60 +236,233 @@ function item(c) {
   cx.globalAlpha = 1;
 }
 
+/* ---------- VEDETTE JAKE 3D (Style Subway Surfers + Bombe Graff + Garde) ---------- */
 function runner(x, y, z, pal, o) {
-  const q = pr(x, y, z), s = q[2], sw = Math.sin(tt * 17) * (o.air ? 0.35 : 1);
+  const q = pr(x, y, z), s = q[2];
+  const isGuard = pal.guard === true;
+  const cyc = tt * 19;
+  const sw = Math.sin(cyc) * (o.air ? 0.35 : 1);
+  const cw = Math.cos(cyc) * (o.air ? 0.25 : 1);
+  const bob = o.air ? 0 : Math.abs(Math.sin(cyc)) * 0.09 * s;
+
   cx.save();
-  cx.translate(q[0], q[1]);
+  cx.translate(q[0], q[1] - bob);
   if (o.al != null) cx.globalAlpha = o.al;
+
+  cx.lineJoin = 'round';
+  cx.lineCap = 'round';
+  cx.strokeStyle = '#141824';
+  cx.lineWidth = Math.max(1.2, 0.032 * s);
+
+  // 1. HOVERBOARD 3D NÉON (Sous les pieds)
   if (o.board) {
-    cx.shadowColor = '#2de2e6'; cx.shadowBlur = 14;
-    rr(-0.42 * s, -0.06 * s, 0.84 * s, 0.1 * s, 0.05 * s, '#2de2e6');
-    cx.shadowBlur = 0;
+    cx.save();
+    cx.rotate(Math.sin(tt * 10) * 0.06);
+    cx.shadowColor = '#00f5d4';
+    cx.shadowBlur = 18;
+    cx.fillStyle = '#ff2a85';
+    cx.beginPath();
+    cx.ellipse(0, -0.04 * s, 0.52 * s, 0.14 * s, 0, 0, Math.PI * 2);
+    cx.fill();
+    cx.stroke();
+    cx.fillStyle = '#00f5d4';
+    cx.beginPath();
+    cx.ellipse(0, -0.05 * s, 0.38 * s, 0.08 * s, 0, 0, Math.PI * 2);
+    cx.fill();
+    for (const k of [-1, 1]) {
+      cx.fillStyle = '#ffd23f';
+      cx.beginPath();
+      cx.arc(k * 0.36 * s, 0.02 * s, 0.06 * s, 0, 7);
+      cx.fill();
+    }
+    cx.restore();
   }
+
+  // 2. ROULADE ACROBATIQUE (Sommersault 3D)
   if (o.roll) {
-    cx.rotate(tt * 16);
-    cx.fillStyle = pal.b;
-    cx.beginPath(); cx.arc(0, -0.36 * s, 0.36 * s, 0, 7); cx.fill();
-    cx.fillStyle = pal.h;
-    cx.fillRect(-0.36 * s, -0.42 * s, 0.72 * s, 0.1 * s);
+    cx.save();
+    cx.translate(0, -0.45 * s);
+    cx.rotate(tt * 22);
+    cx.fillStyle = '#e63946';
+    cx.beginPath(); cx.arc(0, 0, 0.38 * s, 0, 7); cx.fill(); cx.stroke();
+    cx.fillStyle = '#2b5876';
+    cx.beginPath(); cx.arc(0, 0, 0.38 * s, 0.4, Math.PI - 0.4); cx.fill();
+    cx.fillStyle = '#f8f9fa';
+    cx.beginPath(); cx.arc(0, -0.12 * s, 0.24 * s, Math.PI, 0); cx.fill(); cx.stroke();
+    for (const k of [-1, 1]) {
+      rr(k * 0.22 * s, 0.24 * s, 0.18 * s, 0.12 * s, 0.04 * s, '#e63946');
+    }
+    cx.restore();
     cx.restore();
     return;
   }
+
   cx.rotate(o.tilt || 0);
-  for (const k of [-1, 1]) {
+
+  // 3. JAMBES EN PERSPECTIVE (Profondeur avant/arrière + Baskets montantes)
+  const legs = [
+    { side: -1, phase: sw, lift: Math.max(0, -cw) },
+    { side: 1,  phase: -sw, lift: Math.max(0, cw) }
+  ].sort((a, b) => a.phase - b.phase);
+
+  for (const lg of legs) {
     cx.save();
-    cx.translate(k * 0.12 * s, -0.8 * s);
-    cx.rotate(sw * k * 0.7);
-    cx.fillStyle = pal.p;
-    cx.fillRect(-0.07 * s, 0, 0.14 * s, 0.7 * s);
-    cx.fillStyle = o.sn ? '#ffd23f' : '#fff';
-    cx.fillRect(-0.1 * s, 0.64 * s, 0.22 * s, 0.1 * s);
+    const hipX = lg.side * 0.14 * s;
+    const hipY = -0.78 * s;
+    const strideY = lg.phase * 0.18 * s - lg.lift * 0.22 * s;
+    const scaleLeg = 1 + lg.phase * 0.15;
+
+    cx.translate(hipX, hipY);
+    cx.rotate(lg.phase * 0.28);
+
+    const jeanCol = isGuard ? '#162447' : '#1d3557';
+    const legH = (0.58 * s) + strideY * 0.5;
+    rr(-0.095 * s, 0, 0.19 * s, legH, 0.08 * s, jeanCol);
+    cx.strokeRect(-0.095 * s, 0, 0.19 * s, legH);
+
+    // Basket montante (High-Top Sneaker rouge/blanche ou Super Sneaker verte)
+    cx.translate(0, legH - 0.02 * s);
+    cx.scale(scaleLeg * (o.sn ? 1.35 : 1), scaleLeg * (o.sn ? 1.35 : 1));
+
+    rr(-0.12 * s, 0.05 * s, 0.24 * s, 0.09 * s, 0.04 * s, '#ffffff');
+    rr(-0.11 * s, -0.05 * s, 0.22 * s, 0.12 * s, 0.05 * s, isGuard ? '#111111' : (o.sn ? '#05c46b' : '#e63946'));
+    cx.strokeRect(-0.11 * s, -0.05 * s, 0.22 * s, 0.14 * s);
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(-0.05 * s, -0.04 * s, 0.1 * s, 0.05 * s);
     cx.restore();
   }
+
+  // 4. JETPACK RÉACTEUR DOUBLE (Si actif)
   if (o.jet) {
-    cx.fillStyle = '#8a8fa0';
-    cx.fillRect(-0.36 * s, -1.4 * s, 0.72 * s, 0.6 * s);
-    cx.fillStyle = `rgb(255,${150 + Math.random() * 80 | 0},40)`;
+    cx.save();
+    for (const k of [-1, 1]) {
+      const tx = k * 0.24 * s;
+      rr(tx - 0.1 * s, -1.48 * s, 0.2 * s, 0.58 * s, 0.06 * s, '#adb5bd');
+      cx.strokeRect(tx - 0.1 * s, -1.48 * s, 0.2 * s, 0.58 * s);
+      rr(tx - 0.1 * s, -1.32 * s, 0.2 * s, 0.12 * s, 0.02 * s, '#ff9f1c');
+      const flH = (0.38 + Math.random() * 0.28) * s;
+      const grad = cx.createLinearGradient(tx, -0.9 * s, tx, -0.9 * s + flH);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.35, '#ffd23f');
+      grad.addColorStop(1, '#ff3864');
+      cx.fillStyle = grad;
+      cx.beginPath();
+      cx.moveTo(tx - 0.09 * s, -0.9 * s);
+      cx.lineTo(tx, -0.9 * s + flH);
+      cx.lineTo(tx + 0.09 * s, -0.9 * s);
+      cx.closePath();
+      cx.fill();
+    }
+    cx.restore();
+  }
+
+  // 5. BRAS GAUCHE & DROIT + BOMBE AÉROSOL DE JAKE / MATRAQUE DU GARDE
+  for (const k of [-1, 1]) {
+    cx.save();
+    const armPhase = -sw * k;
+    cx.translate(k * 0.31 * s, -1.38 * s);
+    cx.rotate(armPhase * 0.55 + k * 0.12);
+
+    rr(-0.075 * s, 0, 0.15 * s, 0.34 * s, 0.06 * s, isGuard ? '#1b2a49' : '#f8f9fa');
+    rr(-0.075 * s, 0.18 * s, 0.15 * s, 0.22 * s, 0.05 * s, isGuard ? '#1b2a49' : '#e63946');
+    cx.strokeRect(-0.075 * s, 0, 0.15 * s, 0.38 * s);
+
+    cx.fillStyle = '#f4a261';
     cx.beginPath();
-    cx.moveTo(-0.2 * s, -0.8 * s);
-    cx.lineTo(0, (-0.35 + Math.random() * 0.3) * s);
-    cx.lineTo(0.2 * s, -0.8 * s);
+    cx.arc(0, 0.43 * s, 0.075 * s, 0, 7);
+    cx.fill();
+    cx.stroke();
+
+    if (k === 1 && !isGuard) {
+      // Bombe de peinture aérosol dans la main droite de Jake
+      cx.translate(0.03 * s, 0.44 * s);
+      cx.rotate(-0.35);
+      rr(-0.065 * s, -0.12 * s, 0.13 * s, 0.24 * s, 0.03 * s, '#e63946');
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(-0.065 * s, -0.05 * s, 0.13 * s, 0.08 * s);
+      cx.fillStyle = '#ced4da';
+      cx.fillRect(-0.04 * s, -0.16 * s, 0.08 * s, 0.04 * s);
+      cx.strokeRect(-0.065 * s, -0.12 * s, 0.13 * s, 0.24 * s);
+    } else if (k === 1 && isGuard) {
+      // Matraque du Garde
+      cx.translate(0.04 * s, 0.42 * s);
+      cx.rotate(-0.6);
+      rr(-0.035 * s, -0.28 * s, 0.07 * s, 0.36 * s, 0.03 * s, '#222222');
+    }
+    cx.restore();
+  }
+
+  // 6. TORSE : SWEAT ROUGE + GILET EN JEAN BLEU + SAC À DOS
+  if (isGuard) {
+    rr(-0.31 * s, -1.48 * s, 0.62 * s, 0.74 * s, 0.14 * s, '#1b2a49');
+    cx.strokeRect(-0.31 * s, -1.48 * s, 0.62 * s, 0.74 * s);
+    cx.fillStyle = '#ffd23f';
+    cx.fillRect(-0.31 * s, -0.84 * s, 0.62 * s, 0.08 * s);
+  } else {
+    rr(-0.28 * s, -1.46 * s, 0.56 * s, 0.72 * s, 0.14 * s, '#e63946');
+    rr(-0.26 * s, -1.45 * s, 0.52 * s, 0.62 * s, 0.1 * s, '#2b5876');
+    cx.strokeRect(-0.26 * s, -1.45 * s, 0.52 * s, 0.62 * s);
+    cx.fillStyle = '#1e3c52';
+    cx.fillRect(-0.18 * s, -1.44 * s, 0.36 * s, 0.1 * s);
+    rr(-0.17 * s, -1.32 * s, 0.34 * s, 0.38 * s, 0.08 * s, '#d62828');
+    cx.strokeRect(-0.17 * s, -1.32 * s, 0.34 * s, 0.38 * s);
+    cx.fillStyle = '#ffd23f';
+    cx.beginPath();
+    cx.arc(0, -1.13 * s, 0.09 * s, 0, 7);
     cx.fill();
   }
-  for (const k of [-1, 1]) {
+
+  // 7. TÊTE, CAPUCHE BLANCHE & CASQUETTE ROUGE/BLANCHE DE JAKE
+  const headOsc = Math.sin(cyc * 0.5) * 0.04;
+  cx.save();
+  cx.translate(0, -1.72 * s);
+  cx.rotate(headOsc);
+
+  if (isGuard) {
+    cx.fillStyle = '#f4a261';
+    cx.beginPath(); cx.arc(0, 0, 0.22 * s, 0, 7); cx.fill(); cx.stroke();
+    rr(-0.26 * s, -0.24 * s, 0.52 * s, 0.18 * s, 0.06 * s, '#0f172a');
+    cx.fillStyle = '#ffd23f';
+    cx.beginPath(); cx.arc(0, -0.15 * s, 0.05 * s, 0, 7); cx.fill();
+  } else {
+    // Foulard rouge
+    rr(-0.2 * s, 0.14 * s, 0.4 * s, 0.12 * s, 0.05 * s, '#d62828');
+    // Capuche blanche englobante
+    cx.fillStyle = '#f1f5f9';
+    cx.beginPath();
+    cx.arc(0, -0.02 * s, 0.29 * s, 0, Math.PI * 2);
+    cx.fill();
+    cx.stroke();
+
+    // Casquette rouge et blanche sous la capuche
+    cx.fillStyle = '#e63946';
+    cx.beginPath();
+    cx.arc(0, -0.04 * s, 0.23 * s, Math.PI, 0);
+    cx.fill();
+    cx.fillStyle = '#ffffff';
+    cx.beginPath();
+    cx.arc(0, -0.08 * s, 0.15 * s, Math.PI * 1.15, -Math.PI * 0.15);
+    cx.fill();
+    rr(-0.24 * s, -0.06 * s, 0.48 * s, 0.08 * s, 0.04 * s, '#d62828');
+    cx.strokeRect(-0.24 * s, -0.06 * s, 0.48 * s, 0.08 * s);
+
+    // Nuque & cheveux bruns
+    rr(-0.18 * s, 0.02 * s, 0.36 * s, 0.12 * s, 0.04 * s, '#4a2c11');
+  }
+  cx.restore();
+
+  // 8. CHIEN DU GARDE (Qui court à côté de l'inspecteur)
+  if (isGuard) {
     cx.save();
-    cx.translate(k * 0.3 * s, -1.35 * s);
-    cx.rotate(-sw * k * 0.8);
-    cx.fillStyle = pal.b;
-    cx.fillRect(-0.06 * s, 0, 0.12 * s, 0.5 * s);
+    cx.translate(0.55 * s, -0.1 * s + Math.abs(sw) * 0.08 * s);
+    rr(-0.14 * s, -0.32 * s, 0.28 * s, 0.26 * s, 0.08 * s, '#8d5524');
+    cx.strokeRect(-0.14 * s, -0.32 * s, 0.28 * s, 0.26 * s);
+    cx.fillStyle = '#5c3818';
+    cx.fillRect(-0.12 * s, -0.42 * s, 0.07 * s, 0.12 * s);
+    cx.fillRect(0.05 * s, -0.42 * s, 0.07 * s, 0.12 * s);
     cx.restore();
   }
-  rr(-0.27 * s, -1.45 * s, 0.54 * s, 0.68 * s, 0.12 * s, pal.b);
-  cx.fillStyle = '#f1c27d';
-  cx.beginPath(); cx.arc(0, -1.65 * s, 0.2 * s, 0, 7); cx.fill();
-  cx.fillStyle = pal.h;
-  cx.beginPath(); cx.arc(0, -1.68 * s, 0.21 * s, Math.PI, 0); cx.fill();
-  cx.fillRect(-0.02 * s, -1.7 * s, 0.3 * s, 0.06 * s);
+
   cx.restore();
 }
 
@@ -372,19 +553,19 @@ function scene(st, dt) {
         if (b.type === 'train' && Math.abs(b.x - p.x) < b.halfWidth && pz >= b.z && pz <= b.z + b.length && p.y >= 2.9) gy = 3.2;
       }
       const q = pr(p.x, gy, pz), k = 1 / (1 + (p.y - gy) * 0.35);
-      cx.fillStyle = 'rgba(0,0,0,.35)';
-      cx.beginPath(); cx.ellipse(q[0], q[1], 0.42 * q[2] * k, 0.12 * q[2] * k, 0, 0, 7); cx.fill();
-      runner(p.x, p.y, pz, { b: '#e63946', p: '#264653', h: '#1d3557' }, {
+      cx.fillStyle = 'rgba(0,0,0,.38)';
+      cx.beginPath(); cx.ellipse(q[0], q[1], 0.46 * q[2] * k, 0.14 * q[2] * k, 0, 0, 7); cx.fill();
+      runner(p.x, p.y, pz, { guard: false }, {
         roll: p.rolling,
         air: !p.grounded,
         board: st.powerups.hoverboard > 0,
         jet: st.powerups.jetpack > 0,
         sn: st.powerups.sneakers > 0,
-        tilt: st.status === 'over' ? 1.3 : p.state === 'stumble' ? 0.25 * Math.sin(tt * 30) : 0,
+        tilt: st.status === 'over' ? 1.3 : p.state === 'stumble' ? 0.25 * Math.sin(tt * 30) : (p.lane * lw - p.x) * -0.12,
         al: st.invulnerable && st.status === 'running' && Math.floor(tt * 14) % 2 ? 0.45 : 1
       });
     } else if (o === 'C') {
-      runner(p.x, 0, pz - 3.4, { b: '#1b2a49', p: '#101a30', h: '#0d1426' }, {});
+      runner(p.x, 0, pz - 3.4, { guard: true }, {});
     } else if (o.type === 'train') train(o);
     else if (o.type === 'ramp') ramp(o);
     else if (o.type === 'low') low(o);
