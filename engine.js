@@ -109,9 +109,15 @@
       this.inputQ = [];
       this.jumpBuf = 0;
       this.rollBuf = 0;
+      this.baseMultiplier = this.cfg.baseMultiplier || 1;
       this.stats = { jumps: 0, rolls: 0, stumbles: 0, powerups: 0, laneChanges: 0 };
       this._generate();
       this._seedStartCoins();
+      return this;
+    }
+
+    setBaseMultiplier(m) {
+      this.baseMultiplier = Math.max(1, m || 1);
       return this;
     }
 
@@ -182,7 +188,7 @@
       if (T.stumble <= 0) this.speedMul = Math.min(1, this.speedMul + dt * 0.5);
       const dz = this.speed * this.speedMul * dt;
       p.z += dz;
-      const mult = this.powerups.multiplier > 0 ? 2 : 1;
+      const mult = (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1);
       this.score += dz * mult;
 
       // latéral
@@ -320,22 +326,27 @@
     _hit(ob, kind, surf) {
       const p = this.player, T = this.timers, c = this.cfg;
       if (kind === 'side') {
-        if (p.lane !== p.prevLane) p.lane = p.prevLane;           // on revient dans la voie précédente
-        else kind = 'frontal';
+        if (p.lane !== p.prevLane) p.lane = p.prevLane;
+        // Repousser le joueur pour éviter l'encastrement latéral
+        const dir = Math.sign(p.x - ob.x) || (p.prevLane < p.lane ? -1 : 1);
+        p.x = ob.x + dir * (ob.halfWidth + c.playerHalfWidth + 0.05);
       }
-      if (T.invuln > 0) {                                          // invulnérable : pas de dégâts
+      if (T.invuln > 0) {
         if (kind === 'frontal' && ob.type !== 'high') { p.y = Math.max(p.y, surf); p.vy = 0; }
         return;
       }
       if (this.powerups.hoverboard > 0) {
-        this.powerups.hoverboard = 0; T.invuln = c.shieldInvuln;
+        this.powerups.hoverboard = 0;
+        T.invuln = c.shieldInvuln;
         if (kind === 'frontal') ob.ghost = true;
-        this._emit('shieldBreak', { obstacle: ob });
+        this._emit('shieldBreak', { obstacle: ob, kind });
         return;
       }
       const fatal = (ob.type === 'train' && kind === 'frontal') || T.chaser > 0;
       if (fatal) return this._gameOver(ob.type === 'train' && T.chaser <= 0 ? 'crash' : 'caught', ob);
-      T.chaser = c.chaserDuration; T.stumble = c.stumbleDuration; T.invuln = c.stumbleInvuln;
+      T.chaser = c.chaserDuration;
+      T.stumble = c.stumbleDuration;
+      T.invuln = c.stumbleInvuln;
       this.speedMul = c.stumbleSpeedFactor;
       if (kind === 'frontal') ob.ghost = true;
       this.stats.stumbles++;
@@ -356,17 +367,27 @@
     _collect(dt) {
       const p = this.player, c = this.cfg, magnet = this.powerups.magnet > 0;
       const cy = p.y + p.height / 2;
+      const pullSpeed = Math.max(c.magnetPull, this.speed * 1.6 + 10);
       for (const it of this.collectibles) {
         if (it.taken) continue;
         if (magnet && it.type === 'coin') {
           const dzm = it.z - p.z;
-          if (Math.abs(dzm) < c.magnetRadius && Math.abs(it.x - p.x) < c.laneWidth * 1.6) {
-            const dx = p.x - it.x, dy = cy - it.y, dzz = p.z - it.z;
-            const len = Math.hypot(dx, dy, dzz) || 1, mv = Math.min(len, c.magnetPull * dt);
-            it.x += dx / len * mv; it.y += dy / len * mv; it.z += dzz / len * mv;
+          // Cône d'attraction magnétique : aspire les pièces à l'avant (jusqu'à 22m) et sur les voies adjacentes
+          if (dzm > -2 && dzm < 22 && Math.abs(it.x - p.x) < c.laneWidth * 2.5) {
+            const dx = p.x - it.x, dy = cy - it.y, dzz = (p.z + 0.4) - it.z;
+            const len = Math.hypot(dx, dy, dzz) || 1, mv = Math.min(len, pullSpeed * dt);
+            it.x += (dx / len) * mv;
+            it.y += (dy / len) * mv;
+            it.z += (dzz / len) * mv;
+            if (Math.hypot(it.x - p.x, it.y - cy, it.z - p.z) < 2.0 || Math.abs(dzm) < 1.3) {
+              it.taken = true;
+              this.coins++;
+              this._emit('coin', { x: it.x, y: it.y, z: it.z, total: this.coins });
+              continue;
+            }
           }
         }
-        if (Math.abs(it.z - p.z) < 0.9 && Math.abs(it.x - p.x) < 0.9 && Math.abs(it.y - cy) < 1.1) {
+        if (Math.abs(it.z - p.z) < 1.25 && Math.abs(it.x - p.x) < 1.05 && Math.abs(it.y - cy) < 1.4) {
           it.taken = true;
           if (it.type === 'coin') {
             this.coins++;
@@ -540,7 +561,8 @@
         status: this.state, time: this.time, alpha: this.accumulator / c.fixedStep,
         speed: this.speed * this.speedMul, distance: Math.floor(p.z), coins: this.coins,
         score: Math.floor(this.score) + this.coins * c.coinScore,
-        multiplier: this.powerups.multiplier > 0 ? 2 : 1,
+        multiplier: (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1),
+        baseMultiplier: this.baseMultiplier || 1,
         player: { x: p.x, y: p.y, z: p.z, lane: p.lane, height: p.height, state: p.state,
                   rolling: p.rolling, grounded: p.grounded },
         invulnerable: this.timers.invuln > 0,
@@ -572,18 +594,40 @@
       target.addEventListener('keydown', fn);
       return () => target.removeEventListener('keydown', fn);
     },
-    touch(engine, el, threshold = 30) {
-      let sx = 0, sy = 0;
-      const ts = e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; };
+    touch(engine, el, threshold = 26) {
+      let sx = 0, sy = 0, handled = false;
+      const ts = e => {
+        if (!e.touches.length) return;
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+        handled = false;
+      };
+      const tm = e => {
+        if (handled || !e.touches.length) return;
+        const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) >= threshold) {
+          if (Math.abs(dx) > Math.abs(dy)) engine.input(dx < 0 ? 'left' : 'right');
+          else engine.input(dy < 0 ? 'jump' : 'roll');
+          handled = true;
+        }
+      };
       const te = e => {
-        const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
-        if (Math.abs(dx) > Math.abs(dy)) engine.input(dx < 0 ? 'left' : 'right');
-        else engine.input(dy < 0 ? 'jump' : 'roll');
+        if (handled || !e.changedTouches.length) return;
+        const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) >= threshold) {
+          if (Math.abs(dx) > Math.abs(dy)) engine.input(dx < 0 ? 'left' : 'right');
+          else engine.input(dy < 0 ? 'jump' : 'roll');
+          handled = true;
+        }
       };
       el.addEventListener('touchstart', ts, { passive: true });
+      el.addEventListener('touchmove', tm, { passive: true });
       el.addEventListener('touchend', te, { passive: true });
-      return () => { el.removeEventListener('touchstart', ts); el.removeEventListener('touchend', te); };
+      return () => {
+        el.removeEventListener('touchstart', ts);
+        el.removeEventListener('touchmove', tm);
+        el.removeEventListener('touchend', te);
+      };
     }
   };
 

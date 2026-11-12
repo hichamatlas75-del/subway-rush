@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0d1f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Subway Rush — Hicham.Hub</title>
+  <title>Subway Rush HD — Hicham.Hub</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -16,29 +16,66 @@
 
   <!-- HUD En Jeu -->
   <div id="hud">
-    <div class="hud-card">
-      <div id="sc">0</div>
+    <div class="hud-card hud-left">
+      <div class="hud-score-row">
+        <div id="sc">0</div>
+        <div id="mult-pill" class="mult-pill">×1</div>
+      </div>
       <div id="ds">0 m</div>
     </div>
-    <div class="hud-card" id="cn">🪙 0</div>
+    <div class="hud-card hud-right">
+      <div id="cn">🪙 0</div>
+      <div id="boards-count">🛹 ×3</div>
+    </div>
   </div>
 
   <!-- Jauges Power-ups -->
   <div id="pu"></div>
   <div id="toast"></div>
 
-  <!-- Boutons Flottants -->
+  <!-- Boutons Flottants en jeu -->
   <button class="ib" id="bp" aria-label="Pause" title="Pause (P)">⏸</button>
-  <button class="ib" id="bm" aria-label="Son" title="Son">🔊</button>
-  <button class="ib" id="bh" aria-label="Hoverboard" title="Hoverboard (H / Double-tap)">🛹 Skate</button>
+  <button class="ib" id="bm" aria-label="Effets Sonores" title="Effets Sonores">🔊</button>
+  <button class="ib" id="bmusic" aria-label="Musique" title="Musique Synthwave">🎵</button>
+  <button class="ib" id="btouch" aria-label="Commandes Tactiles" title="Boutons à l'écran">🎮</button>
+  <button class="ib" id="bh" aria-label="Hoverboard" title="Hoverboard (H / Double-tap)">
+    <span class="skate-icon">🛹</span>
+    <span id="bh-label">Skate</span>
+    <span class="bh-badge" id="bh-badge">3</span>
+  </button>
+
+  <!-- Commandes Tactiles Virtuelles (Mobile & Tablettes) -->
+  <div id="touch-controls" class="touch-overlay hide">
+    <div class="touch-side touch-left">
+      <button class="t-btn" id="t-left" aria-label="Gauche">◀</button>
+      <button class="t-btn" id="t-right" aria-label="Droite">▶</button>
+    </div>
+    <div class="touch-side touch-right">
+      <button class="t-btn" id="t-up" aria-label="Sauter">▲</button>
+      <button class="t-btn" id="t-down" aria-label="Roulade">▼</button>
+    </div>
+  </div>
 
   <!-- Menu Principal -->
   <div id="menu" class="ov">
     <div class="panel">
-      <div class="engine-tag">⚡ MOTEUR 60HZ • HICHAM.HUB</div>
+      <div class="engine-tag">⚡ MOTEUR HD 60FPS • HICHAM.HUB</div>
       <h1>SUBWAY<span>RUSH</span></h1>
-      <div id="best">🏆 0 · 🪙 0</div>
-      <button class="m" id="play">▶ LANCER LA COURSE</button>
+      <div id="best">🏆 Record : 0   ·   🪙 Banque : 0</div>
+      
+      <div class="menu-mission-preview" id="menu-mission-preview">
+        <span class="m-badge">🎯 MULTIPLICATEUR ACTUEL</span>
+        <strong id="menu-mult-text">NIVEAU ×1</strong>
+        <span class="m-sub" id="menu-mission-sub">Terminez des missions pour booster votre score !</span>
+      </div>
+
+      <button class="m play-btn" id="play">▶ LANCER LA COURSE</button>
+
+      <div class="menu-secondary-buttons">
+        <button class="m sec-btn" id="open-shop">🛍️ BOUTIQUE & SKINS</button>
+        <button class="m sec-btn" id="open-missions">🎯 MISSIONS & DÉFIS</button>
+      </div>
+
       <div class="keys-help">
         <div class="key-row"><strong>← → / Q D</strong>Changer de voie</div>
         <div class="key-row"><strong>↑ / Z / Espace</strong>Sauter (Coyote)</div>
@@ -48,17 +85,62 @@
     </div>
   </div>
 
+  <!-- Écran Boutique / Shop -->
+  <div id="shop" class="ov hide">
+    <div class="panel shop-panel">
+      <div class="engine-tag">GARAGE & PERSONNALISATION</div>
+      <h2>BOUTIQUE 🛍️</h2>
+      <div class="shop-wallet" id="shop-wallet">🪙 0 Pièces disponibles</div>
+      
+      <div class="shop-tabs">
+        <button class="shop-tab active" data-tab="chars">👤 Personnages</button>
+        <button class="shop-tab" data-tab="boards">🛹 Hoverboards</button>
+        <button class="shop-tab" data-tab="upgrades">⚡ Équipement</button>
+      </div>
+
+      <div class="shop-content" id="shop-content">
+        <!-- Rempli dynamiquement en JS -->
+      </div>
+
+      <button class="m a" id="close-shop">⬅ Retour au Menu</button>
+    </div>
+  </div>
+
+  <!-- Écran Missions & Défis -->
+  <div id="missions-modal" class="ov hide">
+    <div class="panel missions-panel">
+      <div class="engine-tag">PROGRESSION DU JOUEUR</div>
+      <h2>MISSIONS & MULTIPLICATEUR 🎯</h2>
+      <div class="multiplier-hero">
+        <div class="mult-circle" id="missions-mult-display">×1</div>
+        <div class="mult-info">
+          <strong>Multiplicateur Permanent de Score</strong>
+          <p>Chaque série de missions accomplie augmente définitivement votre multiplicateur !</p>
+        </div>
+      </div>
+
+      <div class="missions-list" id="missions-list">
+        <!-- Rempli dynamiquement en JS -->
+      </div>
+
+      <button class="m a" id="close-missions">⬅ Fermer</button>
+    </div>
+  </div>
+
   <!-- Écran Game Over -->
   <div id="over" class="ov hide">
-    <div class="panel">
+    <div class="panel over-panel">
       <div class="engine-tag" id="over-tag">FIN DE COURSE</div>
       <h2 id="why">Percuté !</h2>
       <div id="st" class="stats-grid"></div>
       <div id="telemetry" class="engine-telemetry"></div>
       <div id="rc"></div>
       <button class="m rev-btn" id="rev">⚡ Continuer · 50 🪙</button>
-      <button class="m" id="again">↻ REJOUER</button>
-      <button class="m a" id="home">🏠 Menu Principal</button>
+      <button class="m play-btn" id="again">↻ REJOUER</button>
+      <div class="over-buttons-row">
+        <button class="m sec-btn" id="over-shop">🛍️ Boutique</button>
+        <button class="m a" id="home">🏠 Menu</button>
+      </div>
     </div>
   </div>
 
@@ -67,7 +149,8 @@
     <div class="panel">
       <div class="engine-tag">COURSE EN PAUSE</div>
       <h2>PAUSE ⏸</h2>
-      <button class="m" id="resume">▶ Reprendre</button>
+      <button class="m play-btn" id="resume">▶ Reprendre</button>
+      <button class="m sec-btn" id="pause-shop">🛍️ Boutique</button>
       <button class="m a" id="quit">🏠 Menu Principal</button>
     </div>
   </div>

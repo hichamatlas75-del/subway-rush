@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subway-rush-v2';
+const CACHE_NAME = 'subway-rush-v3';
 const ASSETS = [
   './',
   './index.html',
