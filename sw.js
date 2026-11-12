@@ -1,5 +1,12 @@
-const CACHE_NAME = 'subway-rush-v1';
-const ASSETS = ['./', './index.html', './engine.js', './manifest.json'];
+const CACHE_NAME = 'subway-rush-v2';
+const ASSETS = [
+  './',
+  './index.html',
+  './style.css',
+  './engine.js',
+  './app.js',
+  './manifest.json'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
