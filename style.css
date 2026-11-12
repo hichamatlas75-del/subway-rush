@@ -804,3 +804,282 @@ button.m:disabled {
   72%  { opacity: 1; transform: scale(1) translateY(0); }
   100% { opacity: 0; transform: scale(0.95) translateY(-32px); }
 }
+
+/* ---------------- EFFET DE VITESSE RADIAL (SPEED FX) ---------------- */
+#speed-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(circle at center, transparent 45%, rgba(45, 226, 230, 0.15) 85%, rgba(255, 255, 255, 0.35) 100%);
+}
+
+#speed-fx.active {
+  opacity: 1;
+  animation: speedPulse 0.12s infinite alternate;
+}
+
+@keyframes speedPulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.02); }
+}
+
+/* Compteurs secondaires du HUD */
+.hud-sub-counters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#boxes-count {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+/* ---------------- BANNIÈRE DE PALIER / MILESTONE ---------------- */
+.milestone-banner {
+  position: fixed;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  z-index: 15;
+  background: linear-gradient(135deg, rgba(13, 17, 38, 0.95), rgba(45, 226, 230, 0.25));
+  border: 2px solid var(--cyan);
+  border-radius: 99px;
+  padding: 10px 28px;
+  font-size: 18px;
+  font-weight: 900;
+  font-style: italic;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 25px var(--cyan-glow);
+  pointer-events: none;
+  animation: bannerDrop 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bannerDrop {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-40px) scale(0.85); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.08); }
+  25%  { transform: translateX(-50%) translateY(0) scale(1); }
+  85%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-25px); }
+}
+
+/* ---------------- BARRE DE HEADSTART / DÉPART TURBO ---------------- */
+.headstart-bar {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.hs-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 8px 6px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hs-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(255, 210, 63, 0.1);
+}
+
+.hs-btn:active {
+  transform: scale(0.96);
+}
+
+/* ---------------- CALENDRIER DES CADEAUX DU JOUR ---------------- */
+.daily-panel {
+  max-width: 480px;
+}
+
+.daily-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: -8px;
+}
+
+.daily-calendar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.daily-day-card {
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.daily-day-card.claimed {
+  opacity: 0.55;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.daily-day-card.today {
+  border-color: var(--gold);
+  box-shadow: 0 0 16px var(--gold-glow);
+  background: rgba(255, 210, 63, 0.14);
+}
+
+.daily-day-card.day7 {
+  grid-column: span 2;
+}
+
+.daily-day-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.daily-day-icon {
+  font-size: 24px;
+}
+
+.daily-day-reward {
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+}
+
+/* ---------------- OUVERTURE DE BOÎTE MYSTÈRE ---------------- */
+.mystery-panel {
+  max-width: 420px;
+}
+
+.mystery-box-anim {
+  width: 110px;
+  height: 110px;
+  border-radius: 28px;
+  background: radial-gradient(circle, rgba(255, 210, 63, 0.25), rgba(13, 17, 38, 0.9));
+  border: 2px solid var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-glow);
+  animation: floatBox 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes floatBox {
+  from { transform: translateY(-8px) rotate(-3deg); }
+  to   { transform: translateY(8px) rotate(3deg); }
+}
+
+.gift-icon {
+  font-size: 54px;
+}
+
+.mystery-reward-text {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  min-height: 28px;
+}
+
+.over-mystery-alert {
+  background: rgba(255, 210, 63, 0.15);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-weight: 900;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  cursor: pointer;
+  animation: pulseBox 0.8s infinite alternate;
+}
+
+@keyframes pulseBox {
+  from { transform: scale(1); }
+  to   { transform: scale(1.04); }
+}
+
+/* ---------------- PANNEAU PARAMÈTRES & OPTIONS ---------------- */
+.settings-panel {
+  max-width: 420px;
+}
+
+.settings-group {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--glass-card);
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+}
+
+.settings-group label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+}
+
+.settings-group input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan);
+  cursor: pointer;
+}
+
+.quality-selector {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.q-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 12px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.q-btn.active {
+  background: var(--cyan);
+  color: #0b0d1f;
+  border-color: var(--cyan);
+  box-shadow: 0 2px 10px var(--cyan-glow);
+}
+
+.gamepad-status {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gamepad-status span {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.gamepad-status b {
+  font-size: 13px;
+  color: var(--cyan);
+}
+

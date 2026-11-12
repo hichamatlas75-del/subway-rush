@@ -110,6 +110,8 @@
       this.jumpBuf = 0;
       this.rollBuf = 0;
       this.baseMultiplier = this.cfg.baseMultiplier || 1;
+      this.mysteryBoxes = 0;
+      this.lastMilestone = 0;
       this.stats = { jumps: 0, rolls: 0, stumbles: 0, powerups: 0, laneChanges: 0 };
       this._generate();
       this._seedStartCoins();
@@ -118,6 +120,29 @@
 
     setBaseMultiplier(m) {
       this.baseMultiplier = Math.max(1, m || 1);
+      return this;
+    }
+
+    setPowerupDuration(kind, dur) {
+      const key = kind + 'Duration';
+      if (this.cfg[key] != null) this.cfg[key] = Math.max(2, dur);
+      return this;
+    }
+
+    headstart(dist = 400, jet = false) {
+      if (this.state !== 'running') return;
+      const p = this.player;
+      this.timers.invuln = Math.max(this.timers.invuln, (dist / this.speed) + 2);
+      this.obstacles = this.obstacles.filter(o => o.z < p.z || o.z > p.z + dist + 25);
+      if (jet) {
+        this.activatePowerup('jetpack');
+      } else {
+        this.speedMul = 1.7;
+        for (let z = p.z + 10; z < p.z + dist; z += 3.5) {
+          this._addCoin(p.lane * this.cfg.laneWidth, 0.8, z);
+        }
+      }
+      this._emit('headstart', { distance: dist, jet });
       return this;
     }
 
@@ -190,6 +215,12 @@
       p.z += dz;
       const mult = (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1);
       this.score += dz * mult;
+
+      const currentMilestone = Math.floor(p.z / 500);
+      if (currentMilestone > this.lastMilestone) {
+        this.lastMilestone = currentMilestone;
+        this._emit('milestone', { distance: currentMilestone * 500 });
+      }
 
       // latéral
       const tx = p.lane * c.laneWidth, d = tx - p.x, m = c.laneSwitchSpeed * dt;
@@ -392,6 +423,9 @@
           if (it.type === 'coin') {
             this.coins++;
             this._emit('coin', { x: it.x, y: it.y, z: it.z, total: this.coins });
+          } else if (it.type === 'mystery_box') {
+            this.mysteryBoxes = (this.mysteryBoxes || 0) + 1;
+            this._emit('mysteryBox', { x: it.x, y: it.y, z: it.z, total: this.mysteryBoxes });
           } else this.activatePowerup(it.kind);
         }
       }
@@ -535,6 +569,8 @@
           let t = 0; w.forEach(x => t += x[1]); let q = this.rng() * t, kind = w[0][0];
           for (const [k, wt] of w) { q -= wt; if (q <= 0) { kind = k; break; } }
           this._addPowerup(kind, this._pick(LANES), this.nextSpawnZ + len + gap / 2);
+        } else if (this.nextSpawnZ > 150 && this.rng() < 0.08) {
+          this.collectibles.push({ id: this._id++, type: 'mystery_box', x: this._pick(LANES) * this.cfg.laneWidth, y: 1.15, z: this.nextSpawnZ + len + gap / 2, taken: false });
         }
         this.nextSpawnZ += len + gap;
       }
@@ -560,6 +596,7 @@
       return {
         status: this.state, time: this.time, alpha: this.accumulator / c.fixedStep,
         speed: this.speed * this.speedMul, distance: Math.floor(p.z), coins: this.coins,
+        mysteryBoxes: this.mysteryBoxes || 0,
         score: Math.floor(this.score) + this.coins * c.coinScore,
         multiplier: (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1),
         baseMultiplier: this.baseMultiplier || 1,
