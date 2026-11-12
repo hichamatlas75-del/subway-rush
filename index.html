@@ -1,49 +1,84 @@
 <!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#0b0d1f">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json">
-<title>Subway Rush</title>
-<style>
-*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent;user-select:none}
-html,body{height:100%;overflow:hidden;background:#0b0d1f;color:#fff;font:700 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:none}
-canvas{position:fixed;inset:0}
-#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(0,0,0,.5))}
-#hud{position:fixed;top:0;left:0;right:0;padding:max(12px,env(safe-area-inset-top)) 14px 0;display:flex;justify-content:space-between;pointer-events:none;text-shadow:0 2px 8px #000a;visibility:hidden}
-#sc{font-size:36px;font-style:italic;font-weight:900;line-height:1}#ds{font-size:13px;opacity:.9;margin-top:2px}#cn{font-size:24px;text-align:right}
-#pu{position:fixed;top:84px;left:14px;display:flex;flex-direction:column;gap:6px;pointer-events:none}
-.chip{display:none;align-items:center;gap:8px;background:#0008;border-radius:20px;padding:3px 12px 3px 8px;font-size:18px}
-.chip i{display:block;width:56px;height:5px;background:#fff3;border-radius:3px;overflow:hidden}.chip b{display:block;height:100%;background:#ffd23f;transform-origin:left}
-.ib{position:fixed;right:14px;width:40px;height:40px;border-radius:50%;border:0;background:#0007;color:#fff;font-size:18px;cursor:pointer;z-index:5}
-#bp{top:max(56px,calc(env(safe-area-inset-top) + 44px))}#bm{top:max(104px,calc(env(safe-area-inset-top) + 92px))}
-.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,12,30,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);text-align:center;padding:20px;z-index:10}
-.hide{display:none}
-h1{font-size:clamp(42px,12vw,90px);font-style:italic;font-weight:900;letter-spacing:-2px;line-height:.95;text-shadow:0 6px 0 #0006}h1 span{color:#ffd23f;display:block}
-h2{font-size:34px;font-style:italic;font-weight:900}
-button.m{background:linear-gradient(#ffd23f,#ff9f1c);color:#3a2400;border:0;padding:14px 38px;border-radius:40px;font:900 22px system-ui,sans-serif;box-shadow:0 6px 0 #b36b00;cursor:pointer;min-width:230px}
-button.m:active{transform:translateY(4px);box-shadow:0 2px 0 #b36b00}button.m.a{background:#ffffff26;color:#fff;box-shadow:0 6px 0 #0005}button.m:disabled{opacity:.4}
-small{opacity:.8;line-height:1.6;font-weight:600;max-width:440px}#st{font-size:20px;line-height:1.7}#rc{color:#ffd23f}
-#toast{position:fixed;top:26%;left:0;right:0;text-align:center;font-size:clamp(24px,6vw,42px);font-weight:900;font-style:italic;pointer-events:none;opacity:0;text-shadow:0 4px 14px #000a;z-index:8}
-#toast.go{animation:tp 1.2s ease-out}@keyframes tp{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:translateY(-30px)}}
-</style></head><body>
-<canvas id="c"></canvas><div id="vig"></div>
-<div id="hud"><div><div id="sc">0</div><div id="ds">0 m</div></div><div id="cn">🪙 0</div></div>
-<div id="pu"></div><div id="toast"></div>
-<button class="ib" id="bp" aria-label="Pause">⏸</button><button class="ib" id="bm" aria-label="Son">🔊</button>
-<div id="menu" class="ov"><h1>SUBWAY<span>RUSH</span></h1><p id="best"></p><button class="m" id="play">▶ JOUER</button>
-<small>← → / Q D : changer de voie · ↑ Z Espace : saut · ↓ S : roulade · H : hoverboard · P : pause<br>Mobile : glisse dans les 4 directions · Double-tap : Hoverboard 🛹</small></div>
-<div id="over" class="ov hide"><h2 id="why"></h2><div id="st"></div><div id="rc"></div>
-<button class="m" id="rev">Continuer · 50 🪙</button><button class="m" id="again">↻ REJOUER</button><button class="m a" id="home">Menu</button></div>
-<div id="pause" class="ov hide"><h2>PAUSE</h2><button class="m" id="resume">Reprendre</button><button class="m a" id="quit">Menu</button></div>
-<script src="engine.js"></script>
-<script>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d1f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Subway Rush — Hicham.Hub</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="vig"></div>
+
+  <!-- HUD En Jeu -->
+  <div id="hud">
+    <div class="hud-card">
+      <div id="sc">0</div>
+      <div id="ds">0 m</div>
+    </div>
+    <div class="hud-card" id="cn">🪙 0</div>
+  </div>
+
+  <!-- Jauges Power-ups -->
+  <div id="pu"></div>
+  <div id="toast"></div>
+
+  <!-- Boutons Flottants -->
+  <button class="ib" id="bp" aria-label="Pause" title="Pause (P)">⏸</button>
+  <button class="ib" id="bm" aria-label="Son" title="Son">🔊</button>
+  <button class="ib" id="bh" aria-label="Hoverboard" title="Hoverboard (H / Double-tap)">🛹 Skate</button>
+
+  <!-- Menu Principal -->
+  <div id="menu" class="ov">
+    <div class="panel">
+      <div class="engine-tag">⚡ MOTEUR 60HZ • HICHAM.HUB</div>
+      <h1>SUBWAY<span>RUSH</span></h1>
+      <div id="best">🏆 0 · 🪙 0</div>
+      <button class="m" id="play">▶ LANCER LA COURSE</button>
+      <div class="keys-help">
+        <div class="key-row"><strong>← → / Q D</strong>Changer de voie</div>
+        <div class="key-row"><strong>↑ / Z / Espace</strong>Sauter (Coyote)</div>
+        <div class="key-row"><strong>↓ / S</strong>Roulade / Fast-Fall</div>
+        <div class="key-row"><strong>H / 2x Tap</strong>Hoverboard 🛹</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran Game Over -->
+  <div id="over" class="ov hide">
+    <div class="panel">
+      <div class="engine-tag" id="over-tag">FIN DE COURSE</div>
+      <h2 id="why">Percuté !</h2>
+      <div id="st" class="stats-grid"></div>
+      <div id="telemetry" class="engine-telemetry"></div>
+      <div id="rc"></div>
+      <button class="m rev-btn" id="rev">⚡ Continuer · 50 🪙</button>
+      <button class="m" id="again">↻ REJOUER</button>
+      <button class="m a" id="home">🏠 Menu Principal</button>
+    </div>
+  </div>
+
+  <!-- Écran Pause -->
+  <div id="pause" class="ov hide">
+    <div class="panel">
+      <div class="engine-tag">COURSE EN PAUSE</div>
+      <h2>PAUSE ⏸</h2>
+      <button class="m" id="resume">▶ Reprendre</button>
+      <button class="m a" id="quit">🏠 Menu Principal</button>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script>
 const $=i=>document.getElementById(i),cv=$('c'),cx=cv.getContext('2d'),OFF=7.5,CY0=4.4;
 const sv=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},ld=k=>{try{return+localStorage.getItem(k)||0}catch(e){return 0}};
 const show=e=>e.classList.remove('hide'),hide=e=>e.classList.add('hide');
 let W,H,F,HOR,camX=0,camY=CY0,camZ=0,pz=0,tt=0,shake=0,flash=0,combo=0,comboT=0,banked=0,revived=0,best=ld('sr_best'),wallet=ld('sr_wallet'),mute=false,AC,last=0,lastTap=0;
-const G=new SubwayEngine(),menu=$('menu'),ov=$('over'),ps=$('pause');
+const G=new SubwayEngine(),menu=$('menu'),ov=$('over'),ps=$('pause'),vig=$('vig');
 const THS=[{top:[255,110,90],hor:[255,205,150],side:[80,64,96],trk:[96,88,110],bld:[130,84,124]},
 {top:[8,12,38],hor:[70,56,130],side:[26,26,52],trk:[44,46,72],bld:[46,44,100]},
 {top:[64,150,238],hor:[205,232,255],side:[100,156,112],trk:[124,128,142],bld:[176,186,206]}];
@@ -136,33 +171,50 @@ scene(st,dt);cx.restore();
 if(flash>0){cx.fillStyle=`rgba(255,40,40,${flash*.45})`;cx.fillRect(0,0,W,H);flash-=dt*1.5}}
 /* ---------- HUD ---------- */
 const set=(e,v)=>{if(e._v!==v){e._v=v;e.textContent=v}};
-function hud(st){$('hud').style.visibility=st.status==='ready'?'hidden':'visible';set($('sc'),st.score);set($('ds'),st.distance+' m'+(st.multiplier>1?' · ×2':''));set($('cn'),'🪙 '+st.coins);
-for(const k in EM){const c=$('p_'+k),v=st.powerups[k];c.style.display=v>0?'flex':'none';if(v>0)c.querySelector('b').style.transform=`scaleX(${v/DUR[k]})`}}
+function hud(st){
+  $('hud').style.visibility=st.status==='ready'?'hidden':'visible';
+  vig.classList.toggle('danger-chase',st.chaser.active&&st.status==='running');
+  set($('sc'),st.score);
+  set($('ds'),st.distance+' m'+(st.multiplier>1?' · ×2':'')+(st.chaser.active?' · 🚨 GARDE':''));
+  set($('cn'),'🪙 '+st.coins);
+  for(const k in EM){const c=$('p_'+k),v=st.powerups[k];c.style.display=v>0?'flex':'none';if(v>0)c.querySelector('b').style.transform=`scaleX(${v/DUR[k]})`}
+}
 function toast(t){const e=$('toast');e.textContent=t;e.classList.remove('go');void e.offsetWidth;e.classList.add('go')}
-function menuInfo(){$('best').textContent=`🏆 ${best}   ·   🪙 ${wallet}`}menuInfo();
+function menuInfo(){$('best').textContent=`🏆 Record : ${best}   ·   🪙 Banque : ${wallet}`}menuInfo();
 /* ---------- événements ---------- */
 G.on('coin',e=>{comboT=.7;combo=Math.min(combo+1,10);snd(880+combo*70,1400+combo*70,.09,'square',.035);const q=pr(e.x,e.y,e.z);burst(q[0],q[1],6,'#ffd23f',1.2,.4)});
 G.on('jump',()=>snd(300,720,.18,'sine',.1));G.on('roll',()=>snd(520,110,.2,'sawtooth',.04));G.on('laneChange',()=>snd(420,540,.05,'triangle',.05));
 G.on('land',()=>{snd(120,50,.1,'sine',.1);const q=pr(G.player.x,G.player.y,pz);burst(q[0],q[1],8,'#ddd',.8,.35)});
-G.on('stumble',()=>{shake=.5;flash=.5;snd(180,40,.4,'sawtooth',.15);navigator.vibrate&&navigator.vibrate(80)});
-G.on('shieldBreak',()=>{shake=.3;snd(900,100,.35,'triangle',.12);toast('🛹 BOUCLIER !')});
+G.on('stumble',()=>{shake=.5;flash=.5;snd(180,40,.4,'sawtooth',.15);toast('🚨 ATTENTION AU GARDE !');navigator.vibrate&&navigator.vibrate(80)});
+G.on('shieldBreak',()=>{shake=.3;snd(900,100,.35,'triangle',.12);toast('🛹 BOUCLIER ACTIVÉ !')});
 G.on('powerup',e=>{snd(500,1500,.3,'triangle',.1);toast(TX[e.kind])});
 G.on('pause',()=>show(ps));G.on('resume',()=>hide(ps));
 G.on('gameOver',e=>{G.lastReason=e.reason;shake=1;flash=.8;snd(200,25,.9,'sawtooth',.2);navigator.vibrate&&navigator.vibrate([120,60,160]);setTimeout(()=>over(e),900)});
-function over(e){if(G.state!=='over')return;wallet+=e.coins-banked;banked=e.coins;sv('sr_wallet',wallet);const rec=e.score>best;if(rec){best=e.score;sv('sr_best',best)}
-$('why').textContent=e.reason==='crash'?'Percuté par un train !':'Le garde t’a rattrapé !';
-$('st').innerHTML=`Score <b>${e.score}</b><br>Distance <b>${e.distance} m</b> · 🪙 <b>${e.coins}</b>`;$('rc').textContent=rec?'🏆 NOUVEAU RECORD !':`Record : ${best}`;
-const r=$('rev');r.style.display=revived?'none':'';r.disabled=wallet<50;show(ov);
-if(window.onSubwayGameOver)window.onSubwayGameOver({score:e.score,distance:e.distance,coins:e.coins,best,wallet,stats:e.stats})}
+function over(e){
+  if(G.state!=='over')return;
+  wallet+=e.coins-banked;banked=e.coins;sv('sr_wallet',wallet);
+  const rec=e.score>best;if(rec){best=e.score;sv('sr_best',best)}
+  $('over-tag').textContent=e.reason==='crash'?'💥 COLLISION FRONTALE':'🚨 INTERPELLATION';
+  $('why').textContent=e.reason==='crash'?'Percuté par un train !':'Le garde t’a rattrapé !';
+  $('st').innerHTML=`
+    <div class="stat-cell"><span>Score</span><b>${e.score}</b></div>
+    <div class="stat-cell"><span>Distance</span><b>${e.distance} m</b></div>
+    <div class="stat-cell"><span>Pièces</span><b>🪙 ${e.coins}</b></div>`;
+  const s=e.stats||{};
+  $('telemetry').textContent=`Sauts: ${s.jumps||0} · Roulades: ${s.rolls||0} · Voies: ${s.laneChanges||0} · Bonus: ${s.powerups||0}`;
+  $('rc').textContent=rec?'🏆 NOUVEAU RECORD ABSOLU !':`Record actuel : ${best} · Banque : 🪙 ${wallet}`;
+  const r=$('rev');r.style.display=revived?'none':'';r.disabled=wallet<50;show(ov);
+  if(window.onSubwayGameOver)window.onSubwayGameOver({score:e.score,distance:e.distance,coins:e.coins,best,wallet,stats:s});
+}
 function play(){hide(menu);hide(ov);hide(ps);banked=0;revived=0;combo=0;PA.length=0;snd(440,880,.12,'triangle',.08);G.restart()}
+function tryBoard(){if(G.state==='running'&&G.powerups.hoverboard<=0)G.activatePowerup('hoverboard')}
 $('play').onclick=$('again').onclick=play;
 $('rev').onclick=()=>{if(wallet>=50&&!revived){wallet-=50;sv('sr_wallet',wallet);revived=1;hide(ov);G.revive()}};
 $('home').onclick=$('quit').onclick=()=>{G.reset();hide(ov);hide(ps);show(menu);menuInfo()};
 $('resume').onclick=()=>G.resume();$('bp').onclick=()=>{G.state==='running'?G.pause():G.resume()};
 $('bm').onclick=e=>{mute=!mute;e.target.textContent=mute?'🔇':'🔊'};
+$('bh').onclick=tryBoard;
 SubwayInput.keyboard(G);SubwayInput.touch(G,cv);
-/* Hoverboard : Touche H ou Double-Tap */
-function tryBoard(){if(G.state==='running'&&G.powerups.hoverboard<=0)G.activatePowerup('hoverboard')}
 addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(!menu.classList.contains('hide')||!ov.classList.contains('hide'))play()}else if(e.key.toLowerCase()==='h')tryBoard()});
 cv.addEventListener('touchstart',()=>{const n=Date.now();if(n-lastTap<280)tryBoard();lastTap=n},{passive:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.state==='running')G.pause()});addEventListener('blur',()=>{if(G.state==='running')G.pause()});
@@ -170,4 +222,6 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.state===
 function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;tt+=dt;if((comboT-=dt)<=0)combo=0;G.update(dt);const st=G.getState();draw(st,dt);hud(st);requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-</script></body></html>
+</script>
+</body>
+</html>
