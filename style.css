@@ -1047,28 +1047,38 @@ button.m:disabled {
   transition: all 0.35s ease;
 }
 
-.hud-city-pill.tokyo {
-  color: #ff758f;
-  border-color: rgba(255, 117, 143, 0.55);
-  box-shadow: 0 0 12px rgba(255, 117, 143, 0.35);
-}
-
-.hud-city-pill.rio {
-  color: #ffd166;
-  border-color: rgba(255, 209, 102, 0.55);
-  box-shadow: 0 0 12px rgba(255, 209, 102, 0.35);
-}
-
-.hud-city-pill.cyber {
-  color: #2de2e6;
-  border-color: rgba(45, 226, 230, 0.55);
-  box-shadow: 0 0 12px rgba(45, 226, 230, 0.35);
-}
-
+.hud-city-pill.city,
 .hud-city-pill.depot {
   color: #ff9f1c;
   border-color: rgba(255, 159, 28, 0.55);
   box-shadow: 0 0 12px rgba(255, 159, 28, 0.35);
+}
+
+.hud-city-pill.neon,
+.hud-city-pill.tokyo {
+  color: #ff758f;
+  border-color: rgba(255, 117, 143, 0.6);
+  box-shadow: 0 0 12px rgba(255, 117, 143, 0.4);
+}
+
+.hud-city-pill.space,
+.hud-city-pill.cyber {
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+}
+
+.hud-city-pill.ice {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.65);
+  box-shadow: 0 0 12px rgba(125, 211, 252, 0.4);
+}
+
+.hud-city-pill.lava,
+.hud-city-pill.rio {
+  color: #ff6b35;
+  border-color: rgba(255, 107, 53, 0.65);
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.45);
 }
 
 .world-tour-banner {
@@ -1089,6 +1099,26 @@ button.m:disabled {
   box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 35px var(--gold-glow);
   pointer-events: none;
   animation: worldTourFlyIn 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.world-tour-banner.neon {
+  border-color: #ff4d8d;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 38px rgba(255, 77, 141, 0.55);
+}
+
+.world-tour-banner.space {
+  border-color: #a855f7;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 38px rgba(168, 85, 247, 0.55);
+}
+
+.world-tour-banner.ice {
+  border-color: #7dd3fc;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 38px rgba(125, 211, 252, 0.55);
+}
+
+.world-tour-banner.lava {
+  border-color: #ff5400;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 38px rgba(255, 84, 0, 0.65);
 }
 
 .wt-badge {

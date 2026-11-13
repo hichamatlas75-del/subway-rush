@@ -51,7 +51,7 @@ let W, H, F, HOR,
     AC, sfxGain, bgmGain, bgmFilter, bgmAmbGain, bgmInterval, ambientPadTimer,
     gamepadConnected = false,
     gpLastState = { left: false, right: false, up: false, down: false, btnA: false, btnB: false, btnH: false, btnP: false, btnY: false },
-    last = 0, lastTap = 0, lastTapX = 0, lastTapY = 0;
+    last = 0, frameDt = 1 / 120, lastTap = 0, lastTapX = 0, lastTapY = 0;
 
 // Migration transparente des anciens profils vers les Héros Anime Japonais (Ren, Hikari, Kuro, Ryu)
 const LEGACY_CHAR_MAP = { jake: 'ren', tricky: 'hikari', ninja: 'kuro', lucy: 'ryu' };
@@ -61,7 +61,7 @@ if (!unlockedChars.includes('ren')) unlockedChars.unshift('ren');
 sv('sr_active_char', activeChar);
 sv('sr_chars', unlockedChars);
 
-/* ---------- Initialisation du Moteur ---------- */
+/* ---------- Initialisation du Moteur (120 FPS + 5 Dimensions) ---------- */
 const G = new SubwayEngine({ baseMultiplier: baseMult }),
       menu = $('menu'),
       ov = $('over'),
@@ -85,14 +85,18 @@ function applyUpgradedDurations() {
 }
 applyUpgradedDurations();
 
-/* ---------- Palettes & Maquettes World Tour (Clones Subway Surfers) ---------- */
+/* ---------- 5 Dimensions & Maquettes World Tour (Synchronisées sur engine.js 1200m) ---------- */
+const DIM_IDS = ['city', 'neon', 'space', 'ice', 'lava'];
+const DIM_LENGTH = 1200;
+
 const MAQUETTES = {
-  depot: {
-    id: 'depot',
-    name: 'DÉPÔT CLASSIQUE',
-    tag: '🚇 DÉPÔT',
-    flag: '🚇',
-    sub: 'Voies de Triage & Briques Rouges',
+  city: {
+    id: 'city',
+    name: 'MÉTROPOLE',
+    tag: '🌆 MÉTROPOLE',
+    flag: '🌆',
+    sub: 'Dépôt Classique · Voies de Triage & Graffitis',
+    accent: '#ff9f1c',
     palette: {
       top: [35, 48, 75],
       hor: [215, 145, 95],
@@ -101,66 +105,75 @@ const MAQUETTES = {
       bld: [140, 65, 48]
     }
   },
-  tokyo: {
-    id: 'tokyo',
-    name: 'TOKYO WORLD TOUR',
-    tag: '🌸 TOKYO',
-    flag: '🌸',
-    sub: 'Portiques Torii & Cerisiers Sakura',
+  neon: {
+    id: 'neon',
+    name: 'NÉON · TOKYO',
+    tag: '🌃 NÉON · ×1.25',
+    flag: '🌃',
+    sub: 'Vitesse +12% · Score ×1.25 · Torii & Sakura',
+    accent: '#ff758f',
     palette: {
-      top: [48, 22, 78],
-      hor: [255, 145, 180],
-      side: [46, 32, 60],
-      trk: [85, 80, 100],
-      bld: [78, 42, 98]
+      top: [42, 16, 72],
+      hor: [255, 130, 175],
+      side: [44, 28, 62],
+      trk: [72, 68, 96],
+      bld: [78, 42, 102]
     }
   },
-  rio: {
-    id: 'rio',
-    name: 'RIO DE JANEIRO',
-    tag: '🌴 RIO',
-    flag: '🌴',
-    sub: 'Plage & Favelas au Coucher de Soleil',
+  space: {
+    id: 'space',
+    name: 'ORBITE',
+    tag: '🌌 ORBITE · 0.62G',
+    flag: '🌌',
+    sub: 'Gravité Lunaire 0.62× · Score ×1.25 · Station Orbitale',
+    accent: '#a855f7',
     palette: {
-      top: [235, 75, 40],
-      hor: [255, 205, 85],
-      side: [85, 55, 35],
-      trk: [115, 92, 68],
-      bld: [195, 90, 55]
+      top: [6, 9, 28],
+      hor: [68, 42, 132],
+      side: [18, 20, 44],
+      trk: [38, 42, 72],
+      bld: [44, 38, 96]
     }
   },
-  cyber: {
-    id: 'cyber',
-    name: 'CYBER MÉTROPOLE',
-    tag: '⚡ CYBER',
-    flag: '⚡',
-    sub: 'Nuit Électrique & Lévitation Maglev',
+  ice: {
+    id: 'ice',
+    name: 'GLACIER',
+    tag: '🧊 GLACIER · ×1.5',
+    flag: '🧊',
+    sub: 'Glisse sur Glace · Vitesse +5% · Score ×1.5',
+    accent: '#7dd3fc',
     palette: {
-      top: [8, 12, 38],
-      hor: [75, 45, 140],
-      side: [22, 24, 48],
-      trk: [42, 44, 70],
-      bld: [46, 42, 98]
+      top: [14, 42, 82],
+      hor: [145, 224, 245],
+      side: [72, 118, 152],
+      trk: [125, 178, 212],
+      bld: [95, 168, 205]
+    }
+  },
+  lava: {
+    id: 'lava',
+    name: 'VOLCAN',
+    tag: '🌋 VOLCAN · ×2',
+    flag: '🌋',
+    sub: 'Magma Overdrive +10% · SCORE ×2.0 !',
+    accent: '#ff5400',
+    palette: {
+      top: [36, 10, 14],
+      hor: [238, 86, 24],
+      side: [56, 24, 22],
+      trk: [48, 32, 34],
+      bld: [78, 26, 24]
     }
   }
 };
 
-const MAQUETTE_SEQUENCE = [
-  { id: 'depot', start: 0, end: 1200 },
-  { id: 'tokyo', start: 1200, end: 2500 },
-  { id: 'rio', start: 2500, end: 3800 },
-  { id: 'cyber', start: 3800, end: 5200 }
-];
-
 function getMaquetteAtZ(z) {
-  const c = ((z % 5200) + 5200) % 5200;
-  for (const m of MAQUETTE_SEQUENCE) {
-    if (c >= m.start && c < m.end) return m.id;
-  }
-  return 'depot';
+  const di = Math.floor(Math.max(0, z) / DIM_LENGTH) % DIM_IDS.length;
+  return DIM_IDS[di];
 }
 
-let currentMaquetteId = 'depot';
+let currentMaquetteId = 'city';
+let wtBannerTimer = null;
 const WT_PARTICLES = [];
 
 function playWorldTourFanfare() {
@@ -175,11 +188,13 @@ function playWorldTourFanfare() {
   });
 }
 
-function triggerWorldTourChange(newId, prevId) {
+function triggerWorldTourChange(newId) {
   const mq = MAQUETTES[newId];
   if (!mq) return;
+  WT_PARTICLES.length = 0;
   const hudCity = $('hud-city');
   if (hudCity) {
+    hudCity._lastId = newId;
     hudCity.className = `hud-city-pill ${newId}`;
     hudCity.textContent = mq.tag;
   }
@@ -187,19 +202,19 @@ function triggerWorldTourChange(newId, prevId) {
   if (b) {
     if ($('wt-title')) $('wt-title').textContent = mq.name + ' ' + mq.flag;
     if ($('wt-sub')) $('wt-sub').textContent = mq.sub;
-    b.classList.remove('hide');
+    b.className = `world-tour-banner ${newId}`;
     b.style.animation = 'none';
     void b.offsetWidth;
     b.style.animation = '';
-    setTimeout(() => { if (b) b.classList.add('hide'); }, 3200);
+    if (wtBannerTimer) clearTimeout(wtBannerTimer);
+    wtBannerTimer = setTimeout(() => { if (b) b.classList.add('hide'); }, 3200);
   }
   playWorldTourFanfare();
-  const col = newId === 'tokyo' ? '#ff758f' : newId === 'rio' ? '#ffd166' : newId === 'cyber' ? '#2de2e6' : '#ff9f1c';
-  burst(W / 2, H * 0.35, 30, col, 4.5, 1.2);
+  burst(W / 2, H * 0.35, 30, mq.accent || '#ffd23f', 4.5, 1.2);
   burst(W / 2, H * 0.35, 20, '#ffffff', 3.5, 1.0);
 }
 
-const T = JSON.parse(JSON.stringify(MAQUETTES.depot.palette));
+const T = JSON.parse(JSON.stringify(MAQUETTES.city.palette));
 
 const EM = { magnet: '🧲', sneakers: '👟', multiplier: '×2', jetpack: '🚀', hoverboard: '🛹' },
       TX = {
@@ -218,7 +233,8 @@ for (const k in EM) {
 
 /* ---------- Redimensionnement & HiDPI ---------- */
 function rs() {
-  const d = Math.min(window.devicePixelRatio || 1, graphicsQuality === 'ultra' ? 2.5 : 2);
+  const maxDpr = graphicsQuality === 'ultra' ? 2.5 : (graphicsQuality === 'eco' ? 1.25 : 2);
+  const d = Math.min(window.devicePixelRatio || 1, maxDpr);
   W = window.innerWidth;
   H = window.innerHeight;
   cv.width = Math.floor(W * d);
@@ -226,8 +242,8 @@ function rs() {
   cv.style.width = W + 'px';
   cv.style.height = H + 'px';
   cx.setTransform(d, 0, 0, d, 0, 0);
-  cx.imageSmoothingEnabled = true;
-  cx.imageSmoothingQuality = 'high';
+  cx.imageSmoothingEnabled = graphicsQuality !== 'eco';
+  cx.imageSmoothingQuality = graphicsQuality === 'eco' ? 'low' : 'high';
   F = Math.min(H * 0.92, W * 0.88);
   HOR = H * 0.8 - CY0 * F / OFF;
 }
@@ -677,35 +693,48 @@ function train(o) {
   const mq = getMaquetteAtZ(o.z);
 
   let liv;
-  if (mq === 'tokyo') {
-    // Shinkansen / Train grande vitesse japonais (Blanc nacré, Rose Sakura / Cyan)
+  if (mq === 'neon') {
+    // Shinkansen Néo-Tokyo (Blanc nacré, Rose Sakura / Cyan)
     liv = {
       base: [248, 249, 252],
       stripe: (o.variant % 2 === 0) ? [255, 77, 109] : [0, 245, 212],
       text: '新幹線',
       roof: [215, 220, 230],
+      headGlow: '#ff4d6d',
       isShinkansen: true
     };
-  } else if (mq === 'rio') {
-    // Train de Carnaval Rio (Jaune Soleil & Vert Émeraude)
+  } else if (mq === 'space') {
+    // Navette Maglev Orbitale (Titane Spatial & Lignes Plasma Cyan/Violet)
     liv = {
-      base: [255, 209, 102],
-      stripe: [6, 214, 160],
-      text: 'CARNAVAL',
-      roof: [230, 155, 50],
-      isCarnival: true
-    };
-  } else if (mq === 'cyber') {
-    // Maglev Cyberpunk (Noir Titane & Lignes Plasma Cyan)
-    liv = {
-      base: [26, 28, 42],
-      stripe: [45, 226, 230],
-      text: 'MAGLEV',
-      roof: [18, 20, 32],
+      base: [24, 26, 48],
+      stripe: (o.variant % 2 === 0) ? [45, 226, 230] : [168, 85, 247],
+      text: 'ORBITE',
+      roof: [16, 18, 36],
+      headGlow: '#2de2e6',
       isCyber: true
     };
+  } else if (mq === 'ice') {
+    // Express Arctique Glacier (Blanc Givre & Bleu Glaciaire)
+    liv = {
+      base: [228, 244, 255],
+      stripe: [14, 165, 233],
+      text: 'GLACIER',
+      roof: [186, 230, 253],
+      headGlow: '#7dd3fc',
+      isIce: true
+    };
+  } else if (mq === 'lava') {
+    // Rame Blindée Magma (Obsidienne Noir Charbon & Veines Lave Incandescentes)
+    liv = {
+      base: [38, 24, 28],
+      stripe: [255, 92, 10],
+      text: 'MAGMA',
+      roof: [24, 16, 18],
+      headGlow: '#ff6b35',
+      isLava: true
+    };
   } else {
-    // Dépôt classique Subway Surfers vintage
+    // Métropole / Dépôt classique Subway Surfers vintage
     const LIVERIES = [
       { base: [214, 48, 49], stripe: [255, 210, 63], text: 'EXPRESS', roof: [70, 75, 90] },
       { base: [9, 132, 227], stripe: [45, 226, 230], text: 'METRO 1', roof: [65, 75, 95] },
@@ -747,8 +776,9 @@ function train(o) {
         cx.textAlign = 'center';
         cx.fillText('超速', qDecal[0], qDecal[1]);
       }
-    } else if (liv.isCarnival && z1 > zs + 4) {
-      poly([pr(sx, 0.65, zs), pr(sx, 0.65, z1), pr(sx, 0.95, z1), pr(sx, 0.95, zs)], fg([17, 138, 178], 1.05, d));
+    } else if ((liv.isIce || liv.isLava) && z1 > zs + 4) {
+      const subCol = liv.isLava ? [255, 209, 102] : [56, 189, 248];
+      poly([pr(sx, 0.65, zs), pr(sx, 0.65, z1), pr(sx, 0.95, z1), pr(sx, 0.95, zs)], fg(subCol, 1.05, d));
     }
   }
 
@@ -756,14 +786,14 @@ function train(o) {
   if (z0 > camZ + 0.7) {
     poly([pr(x0 + 0.16, 1.65, z0), pr(x1 - 0.16, 1.65, z0), pr(x1 - 0.16, 2.85, z0), pr(x0 + 0.16, 2.85, z0)], fg([18, 28, 48], 1, d));
     poly([pr(x0 + 0.25, 2.0, z0), pr(x0 + 0.6, 2.0, z0), pr(x1 - 0.35, 2.75, z0), pr(x1 - 0.7, 2.75, z0)], 'rgba(255, 255, 255, 0.22)');
-    poly([pr(x0 + 0.25, 2.9, z0), pr(x1 - 0.25, 2.9, z0), pr(x1 - 0.25, 3.12, z0), pr(x0 + 0.25, 3.12, z0)], liv.isShinkansen ? '#ff4d6d' : '#ff9f1c');
+    poly([pr(x0 + 0.25, 2.9, z0), pr(x1 - 0.25, 2.9, z0), pr(x1 - 0.25, 3.12, z0), pr(x0 + 0.25, 3.12, z0)], liv.headGlow || '#ff9f1c');
     poly([pr(x0 + 0.08, 1.15, z0), pr(x1 - 0.08, 1.15, z0), pr(x1 - 0.08, 1.45, z0), pr(x0 + 0.08, 1.45, z0)], fg(liv.stripe, 1.1, d));
 
     for (const k of [-1, 1]) {
       const q = pr(o.x + k * 0.74, 0.8, z0);
-      cx.fillStyle = 'rgba(255, 248, 180, 0.38)';
+      cx.fillStyle = liv.isLava ? 'rgba(255, 130, 50, 0.42)' : 'rgba(255, 248, 180, 0.38)';
       cx.beginPath(); cx.arc(q[0], q[1], 0.34 * q[2], 0, Math.PI * 2); cx.fill();
-      cx.fillStyle = liv.isCyber ? '#2de2e6' : '#fffae0';
+      cx.fillStyle = liv.isCyber ? '#2de2e6' : (liv.isIce ? '#bae6fd' : (liv.isLava ? '#ff9f1c' : '#fffae0'));
       cx.beginPath(); cx.arc(q[0], q[1], 0.18 * q[2], 0, Math.PI * 2); cx.fill();
     }
   }
@@ -815,6 +845,7 @@ function item(c) {
   if (d < 0.8 || d > 135) return;
   const q = pr(c.x, c.y, c.z), s = q[2];
   cx.globalAlpha = 1 - Math.min(1, Math.max(0, d - 85) / 50) * 0.85;
+  const useGlow = graphicsQuality !== 'eco';
 
   if (c.type === 'coin') {
     const r = 0.35 * s;
@@ -843,7 +874,7 @@ function item(c) {
     cx.rotate(Math.sin(tt * 3) * 0.1);
 
     // Cube violet/or
-    cx.shadowColor = '#ffd23f'; cx.shadowBlur = 18;
+    if (useGlow) { cx.shadowColor = '#ffd23f'; cx.shadowBlur = 16; }
     rr(-r * 0.6, -r * 0.6, r * 1.2, r * 1.2, r * 0.25, '#7b2cbf', '#ffd23f', 2);
     // Ruban or
     cx.fillStyle = '#ffd23f';
@@ -860,7 +891,7 @@ function item(c) {
     cx.lineWidth = Math.max(1.5, 0.04 * s);
     cx.beginPath(); cx.arc(q[0], q[1], r * 1.25, 0, Math.PI * 2); cx.stroke();
 
-    cx.shadowColor = '#2de2e6'; cx.shadowBlur = 18;
+    if (useGlow) { cx.shadowColor = '#2de2e6'; cx.shadowBlur = 16; }
     cx.fillStyle = '#ffffff';
     cx.beginPath(); cx.arc(q[0], q[1], r, 0, Math.PI * 2); cx.fill();
     cx.restore();
@@ -1070,7 +1101,9 @@ function runner(x, y, z, pal, o) {
       cyber:   { base: '#05c46b', glow: '#2de2e6', deco: '#ffffff', trail: '#05c46b' }
     }[boardSkin] || { base: '#ff2a85', glow: '#00f5d4', deco: '#ffd23f', trail: '#00f5d4' };
 
-    cx.shadowColor = bProps.glow; cx.shadowBlur = 20;
+    if (graphicsQuality !== 'eco') {
+      cx.shadowColor = bProps.glow; cx.shadowBlur = 20;
+    }
     cx.fillStyle = bProps.base;
     cx.beginPath(); cx.ellipse(0, -0.05 * s, 0.54 * s, 0.15 * s, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
 
@@ -1081,7 +1114,7 @@ function runner(x, y, z, pal, o) {
       cx.fillStyle = bProps.deco;
       cx.beginPath(); cx.arc(k * 0.38 * s, 0.01 * s, 0.07 * s, 0, Math.PI * 2); cx.fill();
     }
-    if (Math.random() < 0.6) {
+    if (Math.random() < Math.min(1, 36 * frameDt)) {
       burst(q[0] + (Math.random() - 0.5) * 0.4 * s, q[1] + 0.1 * s, 2, bProps.trail, 0.8, 0.25);
     }
     cx.restore();
@@ -1282,7 +1315,7 @@ function runner(x, y, z, pal, o) {
       cx.fillStyle = grad;
       cx.beginPath(); cx.moveTo(tx - 0.09 * s, -0.88 * s); cx.lineTo(tx, -0.88 * s + flH); cx.lineTo(tx + 0.09 * s, -0.88 * s); cx.closePath(); cx.fill();
 
-      if (Math.random() < 0.4) burst(q[0] + tx, q[1] - 0.88 * s + flH, 1, '#ff9f1c', 1.2, 0.3);
+      if (Math.random() < Math.min(1, 24 * frameDt)) burst(q[0] + tx, q[1] - 0.88 * s + flH, 1, '#ff9f1c', 1.2, 0.3);
     }
     cx.restore();
   }
@@ -1565,12 +1598,12 @@ function addPopupText(x, y, text, color = '#ffd23f') {
   POPUPS.push({ x, y, text, color, life: 0.85, maxLife: 0.85 });
 }
 
-/* ---------- Modèles 3D des Maquettes World Tour Clone Subway Surfers ---------- */
+/* ---------- Modèles 3D des 5 Dimensions & Maquettes World Tour ---------- */
 
-// 1. Portiques de Caténaire & Arches Spécifiques à la Ville
+// 1. Portiques de Caténaire & Arches Spécifiques à la Dimension
 function drawMaquettePylon(z, mq, lw) {
   const HW = 4.2;
-  if (mq === 'tokyo') {
+  if (mq === 'neon') {
     // Portique Torii Shinto Japonais (鳥居) en vermillon et noir
     box(-HW - 0.75, -HW - 0.45, 0, 6.6, z, z + 0.35, [217, 4, 41]);
     box(HW + 0.45, HW + 0.75, 0, 6.6, z, z + 0.35, [217, 4, 41]);
@@ -1598,39 +1631,57 @@ function drawMaquettePylon(z, mq, lw) {
         }
       }
     }
-  } else if (mq === 'rio') {
-    // Arche Tropicale en Bambou & Guirlandes de Carnaval
-    box(-HW - 0.7, -HW - 0.45, 0, 6.4, z, z + 0.3, [160, 115, 75]);
-    box(HW + 0.45, HW + 0.7, 0, 6.4, z, z + 0.3, [160, 115, 75]);
-    box(-HW - 0.8, HW + 0.8, 6.1, 6.4, z, z + 0.32, [145, 100, 65]);
-
+  } else if (mq === 'space') {
+    // Portique Spatial Orbital Laser (Orbite 0.62G)
+    box(-HW - 0.85, -HW - 0.52, 0, 6.65, z, z + 0.32, [22, 26, 48]);
+    box(HW + 0.52, HW + 0.85, 0, 6.65, z, z + 0.32, [22, 26, 48]);
+    box(-HW - 0.85, HW + 0.85, 6.25, 6.6, z, z + 0.32, [34, 38, 70]);
     if (z > camZ + 0.8) {
-      const flagColors = ['#ffd166', '#06d6a0', '#118ab2', '#ef476f', '#ffd166'];
-      for (let i = 0; i < 5; i++) {
-        const fx = -3.2 + i * 1.6;
-        const qF = pr(fx, 5.6 - Math.sin((i / 4) * Math.PI) * 0.4, z);
-        cx.fillStyle = flagColors[i];
+      const q1 = pr(-HW - 0.52, 6.45, z), q2 = pr(HW + 0.52, 6.45, z), qMid = pr(0, 6.45, z);
+      cx.strokeStyle = '#2de2e6';
+      cx.lineWidth = Math.max(1.5, 0.045 * q1[2]);
+      cx.beginPath(); cx.moveTo(q1[0], q1[1]); cx.lineTo(q2[0], q2[1]); cx.stroke();
+      cx.fillStyle = '#a855f7';
+      cx.beginPath(); cx.arc(qMid[0], qMid[1], 0.26 * qMid[2], 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = '#ffffff';
+      cx.beginPath(); cx.arc(qMid[0], qMid[1], 0.11 * qMid[2], 0, Math.PI * 2); cx.fill();
+    }
+  } else if (mq === 'ice') {
+    // Arche de Glace Cristalline & Stalactites (Glacier)
+    box(-HW - 0.85, -HW - 0.5, 0, 6.45, z, z + 0.34, [135, 205, 240]);
+    box(HW + 0.5, HW + 0.85, 0, 6.45, z, z + 0.34, [135, 205, 240]);
+    box(-HW - 0.95, HW + 0.95, 6.1, 6.5, z - 0.04, z + 0.38, [186, 234, 255]);
+    if (z > camZ + 0.8) {
+      for (let ix = -3.4; ix <= 3.4; ix += 1.1) {
+        const qTop = pr(ix, 6.1, z);
+        const drop = (0.55 + (Math.abs(ix) % 2) * 0.35) * qTop[2];
+        cx.fillStyle = 'rgba(186, 238, 255, 0.88)';
         cx.beginPath();
-        cx.moveTo(qF[0] - 0.18 * qF[2], qF[1]);
-        cx.lineTo(qF[0] + 0.18 * qF[2], qF[1]);
-        cx.lineTo(qF[0], qF[1] + 0.28 * qF[2]);
+        cx.moveTo(qTop[0] - 0.16 * qTop[2], qTop[1]);
+        cx.lineTo(qTop[0] + 0.16 * qTop[2], qTop[1]);
+        cx.lineTo(qTop[0], qTop[1] + drop);
         cx.closePath();
         cx.fill();
       }
     }
-  } else if (mq === 'cyber') {
-    // Portique Laser Cyberpunk
-    box(-HW - 0.8, -HW - 0.55, 0, 6.6, z, z + 0.3, [20, 24, 38]);
-    box(HW + 0.55, HW + 0.8, 0, 6.6, z, z + 0.3, [20, 24, 38]);
-    box(-HW - 0.8, HW + 0.8, 6.2, 6.55, z, z + 0.3, [25, 30, 48]);
+  } else if (mq === 'lava') {
+    // Arche Volcanique d'Obsidienne & Veines de Magma (Volcan ×2)
+    box(-HW - 0.9, -HW - 0.55, 0, 6.55, z, z + 0.38, [38, 22, 26]);
+    box(HW + 0.55, HW + 0.9, 0, 6.55, z, z + 0.38, [38, 22, 26]);
+    box(-HW - 0.95, HW + 0.95, 6.15, 6.6, z, z + 0.38, [48, 26, 28]);
     if (z > camZ + 0.8) {
-      const q1 = pr(-HW - 0.5, 6.5, z), q2 = pr(HW + 0.5, 6.5, z);
-      cx.strokeStyle = '#00f5d4';
-      cx.lineWidth = Math.max(1.5, 0.04 * q1[2]);
-      cx.beginPath(); cx.moveTo(q1[0], q1[1]); cx.lineTo(q2[0], q2[1]); cx.stroke();
+      const qL = pr(-HW - 0.55, 6.35, z), qR = pr(HW + 0.55, 6.35, z);
+      cx.strokeStyle = '#ff5400';
+      cx.lineWidth = Math.max(1.8, 0.06 * qL[2]);
+      cx.beginPath(); cx.moveTo(qL[0], qL[1]); cx.lineTo(qR[0], qR[1]); cx.stroke();
+      for (const vx of [-2.5, 0, 2.5]) {
+        const qV = pr(vx, 6.15, z);
+        cx.fillStyle = '#ffd166';
+        cx.beginPath(); cx.arc(qV[0], qV[1], 0.18 * qV[2], 0, Math.PI * 2); cx.fill();
+      }
     }
   } else {
-    // Portique Industriel Classique Dépôt Subway Surfers
+    // Portique Industriel Classique Métropole Subway Surfers
     box(-HW - 0.9, -HW - 0.65, 0, 6.5, z, z + 0.3, [60, 65, 78]);
     box(HW + 0.65, HW + 0.9, 0, 6.5, z, z + 0.3, [60, 65, 78]);
     box(-HW - 0.9, HW + 0.9, 6.15, 6.5, z, z + 0.3, [55, 60, 72]);
@@ -1653,9 +1704,9 @@ function drawMaquettePylon(z, mq, lw) {
   }
 }
 
-// 2. Décors Latéraux 3D Spécifiques par Ville
+// 2. Décors Latéraux 3D Spécifiques par Dimension
 function drawMaquetteSideScenery(sd, z, i, mq) {
-  if (mq === 'tokyo') {
+  if (mq === 'neon') {
     if (i % 2 === 0) {
       // Cerisier Japonais Sakura 3D (桜)
       const tx = sd * (6.6 + (i % 3) * 1.2);
@@ -1676,9 +1727,9 @@ function drawMaquetteSideScenery(sd, z, i, mq) {
         }
       }
     } else {
-      // Bâtiment Pagode & Poteau Lanterne
+      // Bâtiment Pagode Néon & Poteau Lanterne
       const bx = sd < 0 ? -12.5 : 8.5;
-      box(bx, bx + 4.8, 0, 9 + (i % 4) * 3, z, z + 10, [65, 35, 80]);
+      box(bx, bx + 4.8, 0, 9 + (i % 4) * 3, z, z + 10, [65, 35, 85]);
       const lx = sd * 5.6;
       box(lx - 0.15, lx + 0.15, 0, 3.2, z, z + 0.3, [50, 45, 55]);
       if (z > camZ + 0.8) {
@@ -1689,52 +1740,90 @@ function drawMaquetteSideScenery(sd, z, i, mq) {
         cx.beginPath(); cx.arc(q[0], q[1], 0.55 * q[2], 0, Math.PI * 2); cx.fill();
       }
     }
-  } else if (mq === 'rio') {
+  } else if (mq === 'space') {
+    // Tours Spatiales Orbitales & Balises Plasma
+    const cxP = sd < 0 ? -12.5 : 8.0;
+    box(cxP, cxP + 4.5, 0, 10 + (i % 4) * 4, z, z + 9, [26, 30, 58]);
+    const lx = sd * 5.7;
+    box(lx - 0.16, lx + 0.16, 0, 5.2, z, z + 0.32, [20, 24, 42]);
+    if (z > camZ + 0.8) {
+      const q = pr(lx, 5.2, z);
+      cx.fillStyle = i % 2 === 0 ? '#2de2e6' : '#a855f7';
+      cx.beginPath(); cx.arc(q[0], q[1], 0.26 * q[2], 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+      cx.beginPath(); cx.arc(q[0], q[1], 0.56 * q[2], 0, Math.PI * 2); cx.fill();
+    }
+  } else if (mq === 'ice') {
     if (i % 2 === 0) {
-      // Palmier Tropical 3D (Copacabana)
-      const px = sd * (6.4 + (i % 3) * 1.3);
-      box(px - 0.3, px + 0.3, 0, 5.5, z, z + 0.6, [140, 95, 60]);
+      // Sapin Alpin Enneigé 3D
+      const px = sd * (6.5 + (i % 3) * 1.2);
+      box(px - 0.26, px + 0.26, 0, 2.2, z, z + 0.5, [95, 68, 52]);
       if (z > camZ + 0.8) {
-        const qTop = pr(px, 5.5, z), s = qTop[2];
-        const frondColors = ['#2d6a4f', '#52b788', '#74c69d', '#40916c'];
-        for (let a = 0; a < 7; a++) {
-          const angle = (a / 7) * Math.PI * 2 + (i * 0.3);
-          const fx = qTop[0] + Math.cos(angle) * 2.2 * s;
-          const fy = qTop[1] + (Math.sin(angle) * 0.8 + 0.6) * s;
-          cx.strokeStyle = frondColors[a % 4];
-          cx.lineWidth = Math.max(2, 0.08 * s);
+        const qBase = pr(px, 2.1, z), s = qBase[2];
+        const tiers = [
+          { yOff: 0, h: 2.3, w: 1.5, col: '#0f766e', cap: '#e0f2fe' },
+          { yOff: -1.3, h: 2.0, w: 1.15, col: '#14b8a6', cap: '#f0f9ff' },
+          { yOff: -2.5, h: 1.6, w: 0.8, col: '#2dd4bf', cap: '#ffffff' }
+        ];
+        for (const t of tiers) {
+          cx.fillStyle = t.col;
           cx.beginPath();
-          cx.moveTo(qTop[0], qTop[1]);
-          cx.quadraticCurveTo(qTop[0] + Math.cos(angle) * 1.2 * s, qTop[1] - 0.4 * s, fx, fy);
-          cx.stroke();
+          cx.moveTo(qBase[0] - t.w * s, qBase[1] + t.yOff * s);
+          cx.lineTo(qBase[0] + t.w * s, qBase[1] + t.yOff * s);
+          cx.lineTo(qBase[0], qBase[1] + (t.yOff - t.h) * s);
+          cx.closePath();
+          cx.fill();
+          cx.fillStyle = t.cap;
+          cx.beginPath();
+          cx.moveTo(qBase[0] - t.w * 0.45 * s, qBase[1] + (t.yOff - t.h * 0.52) * s);
+          cx.lineTo(qBase[0] + t.w * 0.45 * s, qBase[1] + (t.yOff - t.h * 0.52) * s);
+          cx.lineTo(qBase[0], qBase[1] + (t.yOff - t.h) * s);
+          cx.closePath();
+          cx.fill();
         }
       }
     } else {
-      // Maisons de Favela Colorées Superposées
-      const fx = sd < 0 ? -12 : 8;
-      const favColors = [
-        [255, 209, 102], [6, 214, 160], [239, 71, 111], [17, 138, 178], [247, 140, 107]
-      ];
-      const col = favColors[(i + (sd < 0 ? 0 : 2)) % favColors.length];
-      box(fx, fx + 4.5, 0, 4.5 + (i % 3) * 2.5, z, z + 8, col);
-      if (i % 2 === 0) {
-        const col2 = favColors[(i + 1) % favColors.length];
-        box(fx + 0.6, fx + 3.8, 4.5 + (i % 3) * 2.5, 8.5 + (i % 3) * 2.5, z + 1, z + 7, col2);
+      // Monolithe de Cristal de Glace
+      const mx = sd < 0 ? -10.8 : 7.6;
+      box(mx, mx + 3.2, 0, 6.5 + (i % 3) * 2.5, z, z + 5.5, [120, 200, 238]);
+      if (z > camZ + 0.8) {
+        const qTip = pr(sd * 6.2, 5.2, z + 2);
+        cx.fillStyle = 'rgba(224, 242, 254, 0.8)';
+        cx.beginPath();
+        cx.moveTo(qTip[0] - 0.5 * qTip[2], qTip[1] + 1.2 * qTip[2]);
+        cx.lineTo(qTip[0] + 0.5 * qTip[2], qTip[1] + 1.2 * qTip[2]);
+        cx.lineTo(qTip[0], qTip[1] - 0.9 * qTip[2]);
+        cx.closePath();
+        cx.fill();
       }
     }
-  } else if (mq === 'cyber') {
-    // Tours de Verre & Piliers Néon
-    const cxP = sd < 0 ? -12 : 8;
-    box(cxP, cxP + 4.5, 0, 10 + (i % 4) * 4, z, z + 9, [32, 38, 62]);
-    const lx = sd * 5.6;
-    box(lx - 0.15, lx + 0.15, 0, 5.0, z, z + 0.3, [20, 24, 38]);
-    if (z > camZ + 0.8) {
-      const q = pr(lx, 5.0, z);
-      cx.fillStyle = '#2de2e6';
-      cx.beginPath(); cx.arc(q[0], q[1], 0.22 * q[2], 0, Math.PI * 2); cx.fill();
+  } else if (mq === 'lava') {
+    if (i % 2 === 0) {
+      // Aiguille de Basalte Volcanique & Sommet Magma
+      const vx = sd * (6.8 + (i % 3) * 1.1);
+      const hPeak = 5.5 + (i % 3) * 2.0;
+      box(vx - 1.0, vx + 1.0, 0, hPeak, z, z + 2.2, [42, 24, 24]);
+      if (z > camZ + 0.8) {
+        const qTop = pr(vx, hPeak, z + 1);
+        cx.fillStyle = 'rgba(255, 84, 0, 0.35)';
+        cx.beginPath(); cx.arc(qTop[0], qTop[1], 0.9 * qTop[2], 0, Math.PI * 2); cx.fill();
+        cx.fillStyle = '#ffd166';
+        cx.beginPath(); cx.arc(qTop[0], qTop[1], 0.35 * qTop[2], 0, Math.PI * 2); cx.fill();
+      }
+    } else {
+      // Parois d'Obsidienne & Fissures Ardentes
+      const wx = sd < 0 ? -12.2 : 7.4;
+      box(wx, wx + 4.8, 0, 6 + (i % 4) * 2.5, z, z + 8.5, [34, 18, 20]);
+      if (z > camZ + 0.8) {
+        const qV = pr(sd * 6.0, 2.8, z + 3);
+        cx.fillStyle = 'rgba(255, 92, 10, 0.85)';
+        cx.fillRect(qV[0] - 0.28 * qV[2], qV[1] - 0.8 * qV[2], 0.14 * qV[2], 1.6 * qV[2]);
+        cx.fillStyle = '#ffd166';
+        cx.fillRect(qV[0] - 0.24 * qV[2], qV[1] - 0.5 * qV[2], 0.06 * qV[2], 1.0 * qV[2]);
+      }
     }
   } else {
-    // Dépôt classique : Conteneurs Maritimes 3D & Murs Brique avec Graffitis
+    // Métropole / Dépôt classique : Conteneurs Maritimes 3D & Murs Brique avec Graffitis
     if (i % 2 === 0) {
       const cxPos = sd * (6.6 + (i % 2) * 1.5);
       const containerColors = [
@@ -1764,48 +1853,73 @@ function drawMaquetteSideScenery(sd, z, i, mq) {
   }
 }
 
-// 3. Particules Environnementales (Pétales de Cerisier Sakura, Poussière Solaire, Étincelles Cyber)
+// 3. Particules Environnementales (Sakura, Poussière Stellaire, Flocons, Braises Volcaniques)
 function drawEnvironmentalParticles(dt, mq) {
-  if (mq === 'tokyo') {
-    while (WT_PARTICLES.length < 32) {
+  if (WT_PARTICLES.length && WT_PARTICLES[0].dim !== mq) WT_PARTICLES.length = 0;
+  const isEco = graphicsQuality === 'eco';
+
+  if (mq === 'neon') {
+    const cap = isEco ? 12 : 30;
+    while (WT_PARTICLES.length < cap) {
       WT_PARTICLES.push({
+        dim: 'neon',
         x: Math.random() * W,
         y: -20 - Math.random() * 80,
-        size: 5 + Math.random() * 6,
-        speedY: 40 + Math.random() * 50,
-        speedX: 20 + Math.random() * 30,
+        size: 5 + Math.random() * 5,
+        speedY: 42 + Math.random() * 48,
+        speedX: 20 + Math.random() * 28,
         rot: Math.random() * Math.PI * 2,
         rotSpeed: (Math.random() - 0.5) * 3,
         wobble: Math.random() * 10,
         color: Math.random() > 0.4 ? '#ff758f' : '#ffb3c1'
       });
     }
-  } else if (mq === 'rio') {
-    while (WT_PARTICLES.length < 24) {
+  } else if (mq === 'space') {
+    const cap = isEco ? 10 : 26;
+    while (WT_PARTICLES.length < cap) {
       WT_PARTICLES.push({
-        x: Math.random() * W,
-        y: -10 - Math.random() * 50,
-        size: 3 + Math.random() * 4,
-        speedY: 25 + Math.random() * 35,
-        speedX: (Math.random() - 0.5) * 20,
-        rot: Math.random() * 6.28,
-        rotSpeed: 2,
-        wobble: Math.random() * 5,
-        color: Math.random() > 0.5 ? '#ffd166' : '#fff'
-      });
-    }
-  } else if (mq === 'cyber') {
-    while (WT_PARTICLES.length < 24) {
-      WT_PARTICLES.push({
+        dim: 'space',
         x: Math.random() * W,
         y: H + 10 + Math.random() * 50,
         size: 2.5 + Math.random() * 3.5,
-        speedY: -(30 + Math.random() * 40),
-        speedX: (Math.random() - 0.5) * 15,
+        speedY: -(28 + Math.random() * 36),
+        speedX: (Math.random() - 0.5) * 16,
         rot: 0,
         rotSpeed: 0,
         wobble: Math.random() * 5,
-        color: '#2de2e6'
+        color: Math.random() > 0.5 ? '#2de2e6' : '#c084fc'
+      });
+    }
+  } else if (mq === 'ice') {
+    const cap = isEco ? 12 : 28;
+    while (WT_PARTICLES.length < cap) {
+      WT_PARTICLES.push({
+        dim: 'ice',
+        x: Math.random() * W,
+        y: -15 - Math.random() * 60,
+        size: 3 + Math.random() * 4,
+        speedY: 36 + Math.random() * 42,
+        speedX: (Math.random() - 0.5) * 26,
+        rot: Math.random() * 6.28,
+        rotSpeed: 1.5,
+        wobble: Math.random() * 6,
+        color: Math.random() > 0.35 ? '#ffffff' : '#bae6fd'
+      });
+    }
+  } else if (mq === 'lava') {
+    const cap = isEco ? 12 : 28;
+    while (WT_PARTICLES.length < cap) {
+      WT_PARTICLES.push({
+        dim: 'lava',
+        x: Math.random() * W,
+        y: H + 10 + Math.random() * 60,
+        size: 3 + Math.random() * 4.5,
+        speedY: -(48 + Math.random() * 55),
+        speedX: (Math.random() - 0.5) * 24,
+        rot: Math.random() * 6.28,
+        rotSpeed: 2.5,
+        wobble: Math.random() * 6,
+        color: Math.random() > 0.45 ? '#ff5400' : '#ffd166'
       });
     }
   } else {
@@ -1817,7 +1931,7 @@ function drawEnvironmentalParticles(dt, mq) {
     p.y += p.speedY * dt;
     p.x += (p.speedX + Math.sin(tt * 2.5 + p.wobble) * 20) * dt;
     p.rot += p.rotSpeed * dt;
-    if (p.y > H + 25 || p.y < -30 || p.x > W + 40 || p.x < -40) {
+    if (p.y > H + 30 || p.y < -35 || p.x > W + 40 || p.x < -40) {
       WT_PARTICLES.splice(i, 1);
       continue;
     }
@@ -1827,7 +1941,7 @@ function drawEnvironmentalParticles(dt, mq) {
     cx.fillStyle = p.color;
     cx.globalAlpha = 0.85;
     cx.beginPath();
-    cx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2);
+    cx.ellipse(0, 0, p.size, p.size * (p.dim === 'neon' ? 0.55 : 0.85), 0, 0, Math.PI * 2);
     cx.fill();
     cx.restore();
   }
@@ -1837,37 +1951,62 @@ function drawEnvironmentalParticles(dt, mq) {
 /* ---------- Rendu de Scène 3D Haute Définition ---------- */
 function scene(st, dt) {
   const p = st.player, lw = st.laneWidth, HW = 4.2, zb = camZ + 140;
-  const currentMq = getMaquetteAtZ(pz);
+  const currentMq = DIM_IDS[st.dim] || getMaquetteAtZ(pz);
 
   // 1. Dégradé de Ciel Atmosphérique
   let g = cx.createLinearGradient(0, 0, 0, HOR);
   g.addColorStop(0, rgb(T.top)); g.addColorStop(1, rgb(T.hor));
   cx.fillStyle = g; cx.fillRect(-30, -30, W + 60, HOR + 30);
 
-  // 2. Soleil / Lune Spécifique à la Ville
-  if (currentMq === 'tokyo') {
+  // 2. Ciel & Astres Spécifiques à la Dimension
+  if (currentMq === 'neon') {
     // Soleil levant géant rose/pourpre
     g = cx.createRadialGradient(W * 0.5, HOR * 0.52, 0, W * 0.5, HOR * 0.52, F * 0.32);
     g.addColorStop(0, 'rgba(255, 110, 140, 0.95)');
     g.addColorStop(0.35, 'rgba(255, 145, 180, 0.4)');
     g.addColorStop(1, 'rgba(255, 145, 180, 0)');
     cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
-  } else if (currentMq === 'rio') {
-    // Coucher de soleil tropical doré éclatant
-    g = cx.createRadialGradient(W * 0.65, HOR * 0.52, 0, W * 0.65, HOR * 0.52, F * 0.38);
-    g.addColorStop(0, 'rgba(255, 205, 85, 0.95)');
-    g.addColorStop(0.4, 'rgba(255, 130, 45, 0.45)');
-    g.addColorStop(1, 'rgba(255, 130, 45, 0)');
-    cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
-  } else if (currentMq === 'cyber') {
-    // Lune cybernétique cyan
-    g = cx.createRadialGradient(W * 0.75, HOR * 0.45, 0, W * 0.75, HOR * 0.45, F * 0.22);
-    g.addColorStop(0, 'rgba(45, 226, 230, 0.85)');
-    g.addColorStop(0.4, 'rgba(45, 226, 230, 0.25)');
+  } else if (currentMq === 'space') {
+    // Champ d'étoiles scintillantes + Exoplanète annelée
+    cx.fillStyle = '#ffffff';
+    for (let si = 0; si < 32; si++) {
+      const sx = ((hs(si + 11) * W * 1.4 - camX * 2) % W + W) % W;
+      const sy = hs(si + 47) * HOR * 0.85;
+      cx.globalAlpha = 0.4 + 0.55 * Math.abs(Math.sin(tt * 2.5 + si));
+      cx.fillRect(sx, sy, 2, 2);
+    }
+    cx.globalAlpha = 1;
+    const px = W * 0.76, py = HOR * 0.38, prRad = Math.max(26, F * 0.08);
+    g = cx.createRadialGradient(px, py, prRad * 0.2, px, py, prRad * 2.2);
+    g.addColorStop(0, 'rgba(168, 85, 247, 0.95)');
+    g.addColorStop(0.45, 'rgba(45, 226, 230, 0.32)');
     g.addColorStop(1, 'rgba(45, 226, 230, 0)');
     cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
+    cx.strokeStyle = 'rgba(45, 226, 230, 0.65)';
+    cx.lineWidth = 3;
+    cx.beginPath(); cx.ellipse(px, py, prRad * 1.45, prRad * 0.32, -0.25, 0, Math.PI * 2); cx.stroke();
+  } else if (currentMq === 'ice') {
+    // Aurores Boréales Polaires & Lune Glaciale
+    const aur = cx.createLinearGradient(0, HOR * 0.1, W, HOR * 0.65);
+    aur.addColorStop(0, 'rgba(16, 185, 129, 0.24)');
+    aur.addColorStop(0.5, 'rgba(56, 189, 248, 0.28)');
+    aur.addColorStop(1, 'rgba(168, 85, 247, 0.18)');
+    cx.fillStyle = aur;
+    cx.beginPath();
+    cx.moveTo(0, HOR * 0.45);
+    for (let x = 0; x <= W; x += 60) {
+      cx.lineTo(x, HOR * (0.28 + Math.sin(x * 0.008 + tt * 1.4) * 0.1));
+    }
+    cx.lineTo(W, HOR * 0.65); cx.lineTo(0, HOR * 0.65); cx.closePath(); cx.fill();
+  } else if (currentMq === 'lava') {
+    // Éclipse Volcanique & Lueur Magma
+    g = cx.createRadialGradient(W * 0.62, HOR * 0.56, 0, W * 0.62, HOR * 0.56, F * 0.36);
+    g.addColorStop(0, 'rgba(255, 130, 35, 0.95)');
+    g.addColorStop(0.35, 'rgba(255, 65, 10, 0.45)');
+    g.addColorStop(1, 'rgba(255, 65, 10, 0)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
   } else {
-    // Soleil de crépuscule classique
+    // Soleil de crépuscule Métropole classique
     g = cx.createRadialGradient(W * 0.7, HOR * 0.55, 0, W * 0.7, HOR * 0.55, F * 0.24);
     g.addColorStop(0, 'rgba(255, 235, 180, 0.88)');
     g.addColorStop(0.3, 'rgba(255, 205, 150, 0.25)');
@@ -1875,25 +2014,42 @@ function scene(st, dt) {
     cx.fillStyle = g; cx.fillRect(0, 0, W, HOR);
   }
 
-  // 3. Skyline Urbaine Spécifique à la Ville
+  // 3. Skyline Spécifique à la Dimension
   cx.fillStyle = fg(T.bld, 0.5, 95);
   {
     const sh = camX * 8, b = Math.floor(sh / 36);
     for (let i = -1; i * 36 < W + 36; i++) {
-      let bH = H * 0.14 * (0.6 + hs(b + i) * 0.8);
+      const bH = H * 0.14 * (0.6 + hs(b + i) * 0.8);
       const bx = i * 36 - (sh - b * 36);
-      if (currentMq === 'rio') {
-        bH = H * 0.16 * (0.8 + Math.sin((i + b * 0.2) * 0.3) * 0.5);
+      if (currentMq === 'ice' || currentMq === 'lava') {
+        // Sommets alpins / crêtes volcaniques
+        cx.fillStyle = fg(T.bld, 0.55, 95);
+        cx.beginPath();
+        cx.moveTo(bx - 12, HOR);
+        cx.lineTo(bx + 18, HOR - 12 - bH * 1.15);
+        cx.lineTo(bx + 48, HOR);
+        cx.closePath();
+        cx.fill();
+        if (currentMq === 'ice') {
+          cx.fillStyle = 'rgba(240, 249, 255, 0.55)';
+          cx.beginPath();
+          cx.moveTo(bx + 6, HOR - 12 - bH * 0.68);
+          cx.lineTo(bx + 18, HOR - 12 - bH * 1.15);
+          cx.lineTo(bx + 30, HOR - 12 - bH * 0.68);
+          cx.closePath();
+          cx.fill();
+        }
+      } else {
+        cx.fillRect(bx, HOR - 8 - bH, 36, bH + 8);
+        cx.fillStyle = currentMq === 'space' ? 'rgba(45, 226, 230, 0.5)' :
+                       currentMq === 'neon' ? 'rgba(255, 117, 143, 0.45)' : 'rgba(255, 235, 150, 0.35)';
+        for (let wy = HOR - bH + 6; wy < HOR - 6; wy += 9) {
+          if (hs(b + i + wy) > 0.4) cx.fillRect(bx + 4, wy, 4, 5);
+          if (hs(b + i + wy * 2) > 0.4) cx.fillRect(bx + 14, wy, 4, 5);
+          if (hs(b + i + wy * 3) > 0.4) cx.fillRect(bx + 24, wy, 4, 5);
+        }
+        cx.fillStyle = fg(T.bld, 0.5, 95);
       }
-      cx.fillRect(bx, HOR - 8 - bH, 36, bH + 8);
-
-      cx.fillStyle = currentMq === 'cyber' ? 'rgba(45, 226, 230, 0.45)' : 'rgba(255, 235, 150, 0.35)';
-      for (let wy = HOR - bH + 6; wy < HOR - 6; wy += 9) {
-        if (hs(b + i + wy) > 0.4) cx.fillRect(bx + 4, wy, 4, 5);
-        if (hs(b + i + wy * 2) > 0.4) cx.fillRect(bx + 14, wy, 4, 5);
-        if (hs(b + i + wy * 3) > 0.4) cx.fillRect(bx + 24, wy, 4, 5);
-      }
-      cx.fillStyle = fg(T.bld, 0.5, 95);
     }
   }
 
@@ -1902,7 +2058,7 @@ function scene(st, dt) {
   g.addColorStop(0, rgb(T.hor)); g.addColorStop(1, rgb(T.side));
   cx.fillStyle = g; cx.fillRect(-30, HOR - 1, W + 60, H - HOR + 30);
 
-  // 5. Bâtiments & Décors 3D Proches Spécifiques (Arbres Sakura, Palmiers, Conteneurs, Favelas)
+  // 5. Bâtiments & Décors 3D Proches Spécifiques
   const i0 = Math.floor(camZ / 12);
   for (let i = i0 + 11; i >= i0; i--) {
     const zPos = i * 12;
@@ -1912,7 +2068,7 @@ function scene(st, dt) {
     }
   }
 
-  // 6. Plateforme Ferroviaire & Ballast
+  // 6. Plateforme Ferroviaire & Ballast (avec canaux de lave en dimension Volcan)
   g = cx.createLinearGradient(0, H, 0, HOR);
   g.addColorStop(0, rgb(T.trk)); g.addColorStop(1, rgb(T.hor));
   cx.fillStyle = g;
@@ -1921,22 +2077,31 @@ function scene(st, dt) {
     cx.beginPath(); cx.moveTo(a[0], a[1]); cx.lineTo(b[0], b[1]); cx.lineTo(c[0], c[1]); cx.lineTo(d[0], d[1]); cx.fill();
   }
 
+  if (currentMq === 'lava') {
+    qd(-HW - 0.52, -HW - 0.04, camZ + 0.7, zb, [255, 84, 0], 1.15);
+    qd(HW + 0.04, HW + 0.52, camZ + 0.7, zb, [255, 84, 0], 1.15);
+  }
+
   // 7. Traverses de Voie Ferrée
   const tie = T.trk.map(v => v * 0.55), zSleeper0 = Math.floor(camZ / 1.5) * 1.5;
   for (let z = zSleeper0; z < zb; z += 1.5) qd(-HW, HW, z, z + 0.38, tie);
 
-  // 8. Rails Métalliques Doubles
+  // 8. Rails Métalliques Doubles (givrés en Glacier)
+  const railCol = currentMq === 'ice' ? [195, 240, 255] : [210, 215, 225];
   const zRail0 = Math.floor(camZ / 12) * 12;
   for (let z = zRail0; z < zb; z += 12) {
     for (const l of [-1, 0, 1]) {
       for (const s of [-0.72, 0.72]) {
-        qd(l * lw + s - 0.05, l * lw + s + 0.05, z, z + 12, [210, 215, 225], 1.15);
+        qd(l * lw + s - 0.05, l * lw + s + 0.05, z, z + 12, railCol, 1.15);
       }
     }
   }
 
-  // 9. Câbles Aériens de Caténaire en Cuivre (Lignes 3D continues)
-  cx.strokeStyle = currentMq === 'cyber' ? 'rgba(45, 226, 230, 0.55)' : 'rgba(180, 185, 200, 0.45)';
+  // 9. Câbles Aériens de Caténaire (Teintés selon la Dimension)
+  cx.strokeStyle = currentMq === 'space' ? 'rgba(45, 226, 230, 0.55)' :
+                   currentMq === 'neon' ? 'rgba(255, 117, 143, 0.55)' :
+                   currentMq === 'ice' ? 'rgba(125, 211, 252, 0.65)' :
+                   currentMq === 'lava' ? 'rgba(255, 107, 53, 0.5)' : 'rgba(180, 185, 200, 0.45)';
   cx.lineWidth = 1.2;
   for (const l of [-1, 0, 1]) {
     const q1 = pr(l * lw, 6.35, camZ + 0.7), q2 = pr(l * lw, 6.35, zb);
@@ -1996,7 +2161,7 @@ function scene(st, dt) {
     else item(o);
   }
 
-  // 12. Particules Environnementales Spécifiques (Pétales Sakura, Poussière Solaire, etc.)
+  // 12. Particules Environnementales Spécifiques (Sakura, Étoiles, Neige, Braises)
   drawEnvironmentalParticles(dt, currentMq);
 
   // 13. Particules d'Impact & Textes Flottants
@@ -2009,6 +2174,7 @@ function scene(st, dt) {
     cx.fillRect(q.x, q.y, q.s, q.s);
   }
 
+  const useShadow = graphicsQuality !== 'eco';
   for (let i = POPUPS.length - 1; i >= 0; i--) {
     const pop = POPUPS[i];
     pop.y -= 38 * dt; pop.life -= dt;
@@ -2017,33 +2183,32 @@ function scene(st, dt) {
     cx.font = '900 18px system-ui, sans-serif';
     cx.textAlign = 'center';
     cx.fillStyle = pop.color;
-    cx.shadowColor = '#000'; cx.shadowBlur = 6;
+    if (useShadow) { cx.shadowColor = '#000'; cx.shadowBlur = 6; }
     cx.fillText(pop.text, pop.x, pop.y);
-    cx.shadowBlur = 0;
+    if (useShadow) cx.shadowBlur = 0;
   }
   cx.globalAlpha = 1;
 }
 
-/* ---------- Boucle de Rendu & Caméra ---------- */
+/* ---------- Boucle de Rendu & Caméra (120 FPS Fixed-Timestep Interpolation) ---------- */
 function draw(st, dt) {
   const p = st.player;
-  pz = p.z + (st.status === 'running' ? st.speed * st.alpha / 60 : 0);
+  pz = p.z + (st.status === 'running' ? st.speed * st.alpha * (G.cfg.fixedStep || 1 / 120) : 0);
   camZ = pz - OFF;
   camX += (p.x * 0.55 - camX) * Math.min(1, dt * 6);
   camY += (CY0 + Math.min(p.y, 7) * 0.35 - camY) * Math.min(1, dt * 4);
 
-  // Détection & Transition de Maquette World Tour
-  const activeMqKey = getMaquetteAtZ(st.distance);
+  // Synchronisation Dimension / Maquette avec engine.js
+  const activeMqKey = DIM_IDS[st.dim] || getMaquetteAtZ(st.distance);
   if (activeMqKey !== currentMaquetteId && st.status === 'running') {
-    const prev = currentMaquetteId;
     currentMaquetteId = activeMqKey;
-    triggerWorldTourChange(activeMqKey, prev);
+    triggerWorldTourChange(activeMqKey);
   }
 
   // Interpolation fluide de la palette atmosphérique
-  const tg = MAQUETTES[activeMqKey].palette;
+  const tg = (MAQUETTES[activeMqKey] || MAQUETTES.city).palette;
   for (const k in T) {
-    T[k] = T[k].map((v, i) => v + (tg[k][i] - v) * Math.min(1, dt * 1.2));
+    T[k] = T[k].map((v, i) => v + (tg[k][i] - v) * Math.min(1, dt * 1.6));
   }
 
   cx.clearRect(0, 0, W, H);
@@ -2091,11 +2256,12 @@ function hud(st) {
     }
   }
 
-  const curMq = MAQUETTES[currentMaquetteId] || MAQUETTES.depot;
+  const curId = DIM_IDS[st.dim] || currentMaquetteId || 'city';
+  const curMq = MAQUETTES[curId] || MAQUETTES.city;
   const hudCity = $('hud-city');
-  if (hudCity && hudCity._lastId !== currentMaquetteId) {
-    hudCity._lastId = currentMaquetteId;
-    hudCity.className = `hud-city-pill ${currentMaquetteId}`;
+  if (hudCity && hudCity._lastId !== curId) {
+    hudCity._lastId = curId;
+    hudCity.className = `hud-city-pill ${curId}`;
     hudCity.textContent = curMq.tag;
   }
 
@@ -2595,6 +2761,13 @@ G.on('milestone', e => {
   showMilestone(e.distance);
 });
 
+G.on('dimension', e => {
+  if (e && e.id && e.id !== currentMaquetteId) {
+    currentMaquetteId = e.id;
+    triggerWorldTourChange(e.id);
+  }
+});
+
 G.on('jump', e => {
   if (e.sneakers) {
     snd(280, 950, 0.25, 'sine', 0.12);
@@ -2745,7 +2918,8 @@ function over(e) {
 
     const s = (e && e.stats) || G.stats || {};
     if ($('telemetry')) {
-      $('telemetry').textContent = `Sauts: ${s.jumps || 0} · Roulades: ${s.rolls || 0} · Voies: ${s.laneChanges || 0} · Bonus: ${s.powerups || 0}`;
+      const dimLabel = G.getState().dimName || (MAQUETTES[currentMaquetteId] && MAQUETTES[currentMaquetteId].name) || 'MÉTROPOLE';
+      $('telemetry').textContent = `${dimLabel} · Sauts: ${s.jumps || 0} · Roulades: ${s.rolls || 0} · Voies: ${s.laneChanges || 0} · Bonus: ${s.powerups || 0}`;
     }
 
     if ($('rc')) $('rc').textContent = rec ? '🏆 NOUVEAU RECORD PERSONNEL !' : `Record actuel : ${best} · Banque : 🪙 ${wallet}`;
@@ -2777,24 +2951,30 @@ function over(e) {
   }
 }
 
+function resetDimensionUI() {
+  currentMaquetteId = 'city';
+  WT_PARTICLES.length = 0;
+  if (wtBannerTimer) { clearTimeout(wtBannerTimer); wtBannerTimer = null; }
+  if ($('world-tour-banner')) $('world-tour-banner').classList.add('hide');
+  for (const k in T) {
+    if (MAQUETTES.city.palette[k]) {
+      T[k] = [...MAQUETTES.city.palette[k]];
+    }
+  }
+  const hudCity = $('hud-city');
+  if (hudCity) {
+    hudCity._lastId = 'city';
+    hudCity.className = 'hud-city-pill city';
+    hudCity.textContent = MAQUETTES.city.tag;
+  }
+}
+
 /* ---------- Lancement & Contrôles ---------- */
 function play() {
   hide(menu); hide(ov); hide(ps); hide(shopModal); hide(missionsModal); hide(dailyModal); hide(mysteryModal); hide(settingsModal);
   if (ov) ov.style.display = '';
   banked = 0; revived = 0; combo = 0; PA.length = 0; POPUPS.length = 0; mysteryBoxesInRun = 0;
-  currentMaquetteId = 'depot';
-  WT_PARTICLES.length = 0;
-  for (const k in T) {
-    if (MAQUETTES.depot.palette[k]) {
-      T[k] = [...MAQUETTES.depot.palette[k]];
-    }
-  }
-  const hudCity = $('hud-city');
-  if (hudCity) {
-    hudCity._lastId = 'depot';
-    hudCity.className = 'hud-city-pill depot';
-    hudCity.textContent = MAQUETTES.depot.tag;
-  }
+  resetDimensionUI();
   stopAmbientMenuBGM();
   snd(440, 880, 0.12, 'triangle', 0.08);
   startBGM();
@@ -2879,6 +3059,7 @@ $('rev').onclick = () => {
 $('home').onclick = $('quit').onclick = () => {
   stopBGM();
   G.reset();
+  resetDimensionUI();
   hide(ov); hide(ps); hide(shopModal); hide(missionsModal); hide(dailyModal); hide(mysteryModal); hide(settingsModal);
   if (ov) ov.style.display = '';
   show(menu);
@@ -2981,10 +3162,11 @@ addEventListener('blur', () => {
   if (G.state === 'running') G.pause();
 });
 
-/* ---------- Boucle Principale 60 FPS ---------- */
+/* ---------- Boucle Principale 120 FPS (Fixed-Timestep Synchronisée) ---------- */
 function loop(ts) {
-  const dt = Math.min(0.05, (ts - last) / 1000 || 0);
+  const dt = last ? Math.min(0.05, Math.max(0, (ts - last) / 1000)) : (1 / 120);
   last = ts;
+  frameDt = dt || (1 / 120);
   tt += dt;
   if ((comboT -= dt) <= 0) combo = 0;
 
@@ -3020,9 +3202,9 @@ const startAmbientOnInteraction = () => {
 };
 window.addEventListener('pointerdown', startAmbientOnInteraction, { once: true });
 
-// Service Worker v6 avec Network-First pour éliminer le cache obsolète sur Chrome Mobile
+// Service Worker v8 avec Network-First pour éliminer le cache obsolète sur Chrome Mobile
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=6.0')
+  navigator.serviceWorker.register('sw.js?v=8.0')
     .then(reg => {
       if (reg.update) reg.update();
     })

@@ -24,7 +24,7 @@
   /* ------------------------------------------------------------------ */
   const DEFAULTS = {
     seed: null,
-    fixedStep: 1 / 60,
+    fixedStep: 1 / 120,
     laneWidth: 2.5,
     laneSwitchSpeed: 24,        // m/s latéral
     // vitesse
@@ -53,6 +53,15 @@
 
   const LANES = [-1, 0, 1];
   const POWERUPS = ['magnet', 'sneakers', 'multiplier', 'jetpack', 'hoverboard'];
+  // Dimensions : changent de monde tous les DIM_LENGTH mètres (vitesse, gravité, glisse, score)
+  const DIMS = [
+    { id: 'city',  name: 'MÉTROPOLE', emoji: '🌆', spd: 1,    lane: 1,   g: 1,   j: 1,  sc: 1 },
+    { id: 'neon',  name: 'NÉON',      emoji: '🌃', spd: 1.12, lane: 1.1, g: 1,   j: 1,  sc: 1.25 },
+    { id: 'space', name: 'ORBITE',    emoji: '🌌', spd: 1,    lane: 1,   g: 0.62, j: 0.8, sc: 1.25 },
+    { id: 'ice',   name: 'GLACIER',   emoji: '🧊', spd: 1.05, lane: 0.55, g: 1,  j: 1,  sc: 1.5 },
+    { id: 'lava',  name: 'VOLCAN',    emoji: '🌋', spd: 1.1,  lane: 1,   g: 1,   j: 1,  sc: 2 }
+  ];
+  const DIM_LENGTH = 1200;
   const OB = {
     train: { height: 3.2, length: 14 },
     ramp:  { height: 3.2, length: 8 },
@@ -113,6 +122,7 @@
       this.mysteryBoxes = 0;
       this.lastMilestone = 0;
       this.awakening = 0; // Jauge d'Éveil Anime 0-100
+      this.dimIndex = 0;
       this.stats = { jumps: 0, rolls: 0, stumbles: 0, powerups: 0, laneChanges: 0 };
       this._generate();
       this._seedStartCoins();
@@ -174,8 +184,7 @@
       if (this.state !== 'over') return false;
       const p = this.player;
       this.obstacles = this.obstacles.filter(o => o.z + o.length < p.z - 5 || o.z > p.z + 45);
-      p.y = 0; p.vy = 0;
-      p.lane = p.prevLane = clamp(Math.round(p.x / this.cfg.laneWidth), -1, 1);
+      p.y = 0; p.vy = 0; p.lane = p.prevLane = clamp(Math.round(p.x / this.cfg.laneWidth), -1, 1);
       p.x = p.lane * this.cfg.laneWidth;
       this.timers.chaser = 0; this.timers.stumble = 0;
       this.timers.invuln = this.cfg.reviveInvuln;
@@ -212,7 +221,7 @@
       this.accumulator += Math.min(dt, 0.1);
       const step = this.cfg.fixedStep;
       let n = 0;
-      while (this.accumulator >= step && n++ < 6) {
+      while (this.accumulator >= step && n++ < 12) {
         this._step(step);
         this.accumulator -= step;
         if (this.state !== 'running') { this.accumulator = 0; break; }
@@ -229,13 +238,14 @@
       this._tickTimers(dt);
 
       // vitesse
-      const target = Math.min(c.maxSpeed, c.baseSpeed + p.z * c.speedGain);
+      const D = DIMS[this.dimIndex];
+      const target = Math.min(c.maxSpeed, c.baseSpeed + p.z * c.speedGain) * D.spd;
       this.speed += (target - this.speed) * Math.min(1, dt * 2);
       if (T.stumble <= 0) this.speedMul = Math.min(1, this.speedMul + dt * 0.5);
       const dz = this.speed * this.speedMul * dt;
       p.z += dz;
       const mult = (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1);
-      this.score += dz * mult;
+      this.score += dz * mult * D.sc;
 
       const currentMilestone = Math.floor(p.z / 500);
       if (currentMilestone > this.lastMilestone) {
@@ -244,7 +254,13 @@
       }
 
       // latéral
-      const tx = p.lane * c.laneWidth, d = tx - p.x, m = c.laneSwitchSpeed * dt;
+      const di = Math.floor(p.z / DIM_LENGTH) % DIMS.length;
+      if (di !== this.dimIndex) {
+        this.dimIndex = di;
+        const nd = DIMS[di];
+        this._emit('dimension', { index: di, id: nd.id, name: nd.name, emoji: nd.emoji });
+      }
+      const tx = p.lane * c.laneWidth, d = tx - p.x, m = c.laneSwitchSpeed * DIMS[this.dimIndex].lane * dt;
       p.x = Math.abs(d) <= m ? tx : p.x + Math.sign(d) * m;
 
       // roulade
@@ -308,7 +324,7 @@
 
     _jump() {
       const p = this.player, c = this.cfg;
-      p.vy = this.powerups.sneakers > 0 ? c.sneakersJumpVelocity : c.jumpVelocity;
+      p.vy = (this.powerups.sneakers > 0 ? c.sneakersJumpVelocity : c.jumpVelocity) * DIMS[this.dimIndex].j;
       p.grounded = false; p.coyote = 0; p.rolling = false; p.rollT = 0;
       this.stats.jumps++;
       this.addAwakening(2);
@@ -349,7 +365,7 @@
         return;
       }
       const prevY = p.y, wasGrounded = p.grounded;
-      p.vy = Math.max(-c.terminalVelocity, p.vy - c.gravity * dt);
+      p.vy = Math.max(-c.terminalVelocity, p.vy - c.gravity * DIMS[this.dimIndex].g * dt);
       p.y += p.vy * dt;
 
       let support = 0;
@@ -372,7 +388,7 @@
       for (const ob of this.obstacles) {
         if (ob.ghost) continue;
 
-        // Frôlement héroïque (Near-Miss) : esquive au millimètre d'un obstacle ou train
+        // Frôlement héroïque (Near-Miss)
         if (!ob.nearMissed && p.prevZ <= ob.z + 0.3 && p.z > ob.z + 0.3) {
           const dx = Math.abs(p.x - ob.x);
           const colDist = ob.halfWidth + c.playerHalfWidth;
@@ -405,27 +421,23 @@
         return;
       }
       if (kind === 'side') {
-        // Repousser le joueur pour éviter l'encastrement latéral et assigner la voie sûre
         const dir = Math.sign(p.x - ob.x) || (p.prevLane < p.lane ? -1 : 1);
         p.x = ob.x + dir * (ob.halfWidth + c.playerHalfWidth + 0.05);
         p.lane = p.prevLane = clamp(Math.round(p.x / c.laneWidth), -1, 1);
       }
-      if (T.invuln > 0) {
+      if (T.invuln > 0) {                                          // invulnérable : pas de dégâts
         if (kind === 'frontal' && ob.type !== 'high') { p.y = Math.max(p.y, surf); p.vy = 0; }
         return;
       }
       if (this.powerups.hoverboard > 0) {
-        this.powerups.hoverboard = 0;
-        T.invuln = c.shieldInvuln;
+        this.powerups.hoverboard = 0; T.invuln = c.shieldInvuln;
         if (kind === 'frontal') ob.ghost = true;
-        this._emit('shieldBreak', { obstacle: ob, kind });
+        this._emit('shieldBreak', { obstacle: ob });
         return;
       }
       const fatal = (ob.type === 'train' && kind === 'frontal') || T.chaser > 0;
       if (fatal) return this._gameOver(ob.type === 'train' && T.chaser <= 0 ? 'crash' : 'caught', ob);
-      T.chaser = c.chaserDuration;
-      T.stumble = c.stumbleDuration;
-      T.invuln = c.stumbleInvuln;
+      T.chaser = c.chaserDuration; T.stumble = c.stumbleDuration; T.invuln = c.stumbleInvuln;
       this.speedMul = c.stumbleSpeedFactor;
       if (kind === 'frontal') ob.ghost = true;
       this.stats.stumbles++;
@@ -451,7 +463,6 @@
         if (it.taken) continue;
         if (magnet && it.type === 'coin') {
           const dzm = it.z - p.z;
-          // Cône d'attraction magnétique : aspire les pièces à l'avant (jusqu'à 22m) et sur les voies adjacentes
           if (dzm > -2 && dzm < 22 && Math.abs(it.x - p.x) < c.laneWidth * 2.5) {
             const dx = p.x - it.x, dy = cy - it.y, dzz = (p.z + 0.4) - it.z;
             const len = Math.hypot(dx, dy, dzz) || 1, mv = Math.min(len, pullSpeed * dt);
@@ -646,8 +657,9 @@
       return {
         status: this.state, time: this.time, alpha: this.accumulator / c.fixedStep,
         speed: this.speed * this.speedMul, distance: Math.floor(p.z), coins: this.coins,
-        mysteryBoxes: this.mysteryBoxes || 0,
         score: Math.floor(this.score) + this.coins * c.coinScore,
+        mysteryBoxes: this.mysteryBoxes || 0,
+        dim: this.dimIndex, dimName: DIMS[this.dimIndex].emoji + ' ' + DIMS[this.dimIndex].name,
         multiplier: (this.powerups.multiplier > 0 ? 2 : 1) * (this.baseMultiplier || 1),
         baseMultiplier: this.baseMultiplier || 1,
         awakening: this.awakening || 0,
@@ -674,8 +686,7 @@
       if (!target) return () => {};
       const map = {
         ArrowLeft: 'left', a: 'left', q: 'left', ArrowRight: 'right', d: 'right',
-        ArrowUp: 'jump', w: 'jump', z: 'jump', ' ': 'jump', ArrowDown: 'roll', s: 'roll',
-        e: 'awakening', E: 'awakening'
+        ArrowUp: 'jump', w: 'jump', z: 'jump', ' ': 'jump', ArrowDown: 'roll', s: 'roll', e: 'awakening'
       };
       const fn = e => {
         const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, a = map[k];
@@ -687,30 +698,16 @@
     },
     touch(engine, el, threshold = 26) {
       let sx = 0, sy = 0, handled = false;
-      const ts = e => {
-        if (!e.touches.length) return;
-        sx = e.touches[0].clientX;
-        sy = e.touches[0].clientY;
-        handled = false;
+      const act = (x, y) => {
+        const dx = x - sx, dy = y - sy;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+        if (Math.abs(dx) > Math.abs(dy)) engine.input(dx < 0 ? 'left' : 'right');
+        else engine.input(dy < 0 ? 'jump' : 'roll');
+        handled = true;
       };
-      const tm = e => {
-        if (handled || !e.touches.length) return;
-        const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) >= threshold) {
-          if (Math.abs(dx) > Math.abs(dy)) engine.input(dx < 0 ? 'left' : 'right');
-          else engine.input(dy < 0 ? 'jump' : 'roll');
-          handled = true;
-        }
-      };
-      const te = e => {
-        if (handled || !e.changedTouches.length) return;
-        const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) >= threshold) {
-          if (Math.abs(dx) > Math.abs(dy)) engine.input(dx < 0 ? 'left' : 'right');
-          else engine.input(dy < 0 ? 'jump' : 'roll');
-          handled = true;
-        }
-      };
+      const ts = e => { if (!e.touches.length) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; handled = false; };
+      const tm = e => { if (!handled && e.touches.length) act(e.touches[0].clientX, e.touches[0].clientY); };
+      const te = e => { if (!handled && e.changedTouches.length) act(e.changedTouches[0].clientX, e.changedTouches[0].clientY); };
       el.addEventListener('touchstart', ts, { passive: true });
       el.addEventListener('touchmove', tm, { passive: true });
       el.addEventListener('touchend', te, { passive: true });

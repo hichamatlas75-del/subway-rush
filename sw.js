@@ -1,10 +1,10 @@
-const CACHE_NAME = 'subway-rush-v7';
+const CACHE_NAME = 'subway-rush-v8';
 const ASSETS = [
   './',
   './index.html',
-  './style.css?v=7.0',
-  './engine.js?v=7.0',
-  './app.js?v=7.0',
+  './style.css?v=8.0',
+  './engine.js?v=8.0',
+  './app.js?v=8.0',
   './manifest.json'
 ];
 
