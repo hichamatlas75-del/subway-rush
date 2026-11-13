@@ -1028,10 +1028,16 @@ function runner(x, y, z, pal, o) {
   const hero = ANIME_HEROES[heroKey] || ANIME_HEROES.ren;
   const boardSkin = activeBoard || 'classic';
 
+  const isSurfing = Boolean(o.board && !isGuard);
   const cyc = tt * 19;
   const sw = Math.sin(cyc) * (o.air ? 0.35 : 1);
   const cw = Math.cos(cyc) * (o.air ? 0.25 : 1);
-  const bob = o.air ? 0 : Math.abs(Math.sin(cyc)) * 0.09 * s;
+  const surfFloat = isSurfing ? (0.14 + Math.sin(tt * 7.5) * 0.035) * s : 0;
+  const bob = isSurfing ? surfFloat : (o.air ? 0 : Math.abs(Math.sin(cyc)) * 0.09 * s);
+  const crouch = (isSurfing && !o.roll) ? 0.08 * s : 0;
+  const carveTilt = isSurfing
+    ? (o.tilt || 0) * 1.15 + Math.sin(tt * 6.5) * 0.04 + (o.air ? -0.10 : 0)
+    : (o.tilt || 0);
 
   cx.save();
   cx.translate(q[0], q[1] - bob);
@@ -1046,13 +1052,13 @@ function runner(x, y, z, pal, o) {
   if (o.awakening && !isGuard) {
     cx.save();
     // Halo radiale flamboyant
-    const aGrad = cx.createRadialGradient(0, -0.9 * s, 0.15 * s, 0, -0.9 * s, 1.45 * s);
+    const aGrad = cx.createRadialGradient(0, -0.9 * s + crouch, 0.15 * s, 0, -0.9 * s + crouch, 1.45 * s);
     aGrad.addColorStop(0, hero.auraSec);
     aGrad.addColorStop(0.35, hero.aura);
     aGrad.addColorStop(1, 'rgba(0,0,0,0)');
     cx.fillStyle = aGrad;
     cx.beginPath();
-    cx.arc(0, -0.9 * s, 1.45 * s, 0, Math.PI * 2);
+    cx.arc(0, -0.9 * s + crouch, 1.45 * s, 0, Math.PI * 2);
     cx.fill();
 
     // Flammes d'énergie anime cel-shaded ondulantes
@@ -1063,7 +1069,7 @@ function runner(x, y, z, pal, o) {
       const ang = (i / auraCount) * Math.PI * 2;
       const rDist = (1.08 + Math.sin(tt * 24 + i * 1.5) * 0.22 + Math.cos(tt * 18 - i * 0.8) * 0.12) * s;
       const ax = Math.cos(ang) * rDist;
-      const ay = -0.9 * s + Math.sin(ang) * rDist * 1.1;
+      const ay = -0.9 * s + crouch + Math.sin(ang) * rDist * 1.1;
       if (i === 0) cx.moveTo(ax, ay); else cx.lineTo(ax, ay);
     }
     cx.closePath();
@@ -1077,7 +1083,7 @@ function runner(x, y, z, pal, o) {
     for (let k = 0; k < 4; k++) {
       const startA = (k / 4) * Math.PI * 2 + tt * 9;
       let ex = Math.cos(startA) * 0.45 * s;
-      let ey = -0.9 * s + Math.sin(startA) * 0.75 * s;
+      let ey = -0.9 * s + crouch + Math.sin(startA) * 0.75 * s;
       cx.beginPath();
       cx.moveTo(ex, ey);
       for (let j = 0; j < 3; j++) {
@@ -1090,10 +1096,12 @@ function runner(x, y, z, pal, o) {
     cx.restore();
   }
 
-  // 2. HOVERBOARD HD
+  // Bascule globale de carve (inclinaison synchronisée planche + surfeur)
+  if (isSurfing) cx.rotate(carveTilt);
+
+  // 2. HOVERBOARD HD (Glisse antigravité + réacteurs latéraux)
   if (o.board) {
     cx.save();
-    cx.rotate(Math.sin(tt * 9) * 0.06);
 
     const bProps = {
       classic: { base: '#ff2a85', glow: '#00f5d4', deco: '#ffd23f', trail: '#00f5d4' },
@@ -1104,18 +1112,33 @@ function runner(x, y, z, pal, o) {
     if (graphicsQuality !== 'eco') {
       cx.shadowColor = bProps.glow; cx.shadowBlur = 20;
     }
-    cx.fillStyle = bProps.base;
-    cx.beginPath(); cx.ellipse(0, -0.05 * s, 0.54 * s, 0.15 * s, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
 
+    // Halos propulseurs sous la planche
+    for (const k of [-1, 1]) {
+      cx.fillStyle = bProps.glow;
+      cx.globalAlpha = 0.45 + Math.sin(tt * 16 + k) * 0.15;
+      cx.beginPath(); cx.ellipse(k * 0.34 * s, 0.08 * s, 0.18 * s, 0.06 * s, 0, 0, Math.PI * 2); cx.fill();
+    }
+    cx.globalAlpha = o.al != null ? o.al : 1;
+
+    // Tranche épaisse 3D de la planche
+    cx.fillStyle = '#0b0f19';
+    cx.beginPath(); cx.ellipse(0, -0.01 * s, 0.59 * s, 0.17 * s, 0, 0, Math.PI * 2); cx.fill();
+
+    // Pont principal du hoverboard
+    cx.fillStyle = bProps.base;
+    cx.beginPath(); cx.ellipse(0, -0.05 * s, 0.58 * s, 0.16 * s, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
+
+    // Cœur néon central & grip antidérapant
     cx.fillStyle = bProps.glow;
-    cx.beginPath(); cx.ellipse(0, -0.06 * s, 0.40 * s, 0.07 * s, 0, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.ellipse(0, -0.06 * s, 0.42 * s, 0.075 * s, 0, 0, Math.PI * 2); cx.fill();
 
     for (const k of [-1, 1]) {
       cx.fillStyle = bProps.deco;
-      cx.beginPath(); cx.arc(k * 0.38 * s, 0.01 * s, 0.07 * s, 0, Math.PI * 2); cx.fill();
+      cx.beginPath(); cx.arc(k * 0.40 * s, -0.04 * s, 0.065 * s, 0, Math.PI * 2); cx.fill();
     }
     if (Math.random() < Math.min(1, 36 * frameDt)) {
-      burst(q[0] + (Math.random() - 0.5) * 0.4 * s, q[1] + 0.1 * s, 2, bProps.trail, 0.8, 0.25);
+      burst(q[0] + (Math.random() - 0.5) * 0.45 * s, q[1] - bob + 0.06 * s, 2, bProps.trail, 0.8, 0.25);
     }
     cx.restore();
   }
@@ -1147,12 +1170,12 @@ function runner(x, y, z, pal, o) {
     return;
   }
 
-  cx.rotate(o.tilt || 0);
+  if (!isSurfing) cx.rotate(carveTilt);
 
   // 4. ÉCHARPE ANIME FLOTTANTE (Dynamique 4 segments au vent)
   if (!isGuard) {
     cx.save();
-    const scarfBaseY = -1.52 * s;
+    const scarfBaseY = -1.52 * s + crouch;
     const scarfTailX = -(o.tilt || 0) * 0.35 * s;
     const scarfSegs = 4;
     const ptsLeft = [];
@@ -1208,7 +1231,7 @@ function runner(x, y, z, pal, o) {
   // 5. CYBER-KATANA SUR LE DOS (サイバー刀)
   if (!isGuard) {
     cx.save();
-    cx.translate(0.04 * s, -1.26 * s);
+    cx.translate(0.04 * s, -1.26 * s + crouch);
     cx.rotate(0.68 + (o.tilt || 0) * 0.25);
 
     // Fourreau (Saya) métallique noir mat
@@ -1245,60 +1268,123 @@ function runner(x, y, z, pal, o) {
     cx.restore();
   }
 
-  // 6. JAMBES & BASKETS MECHA ANIME (Perspective & Stride)
-  const legs = [
-    { side: -1, phase: sw, lift: Math.max(0, -cw) },
-    { side: 1,  phase: -sw, lift: Math.max(0, cw) }
-  ].sort((a, b) => a.phase - b.phase);
+  // 6. JAMBES & BASKETS MECHA ANIME (Glisse surf sur Hoverboard OU course à pied)
+  if (isSurfing) {
+    // Posture de glisse surf genoux fléchis & pieds plantés sur le deck
+    const surfLegs = [
+      { side: -1, hipX: -0.14 * s, hipY: -0.76 * s + crouch, kneeX: -0.28 * s, kneeY: -0.43 * s, ankleX: -0.22 * s, ankleY: -0.21 * s, scale: 0.96, footRot: -0.08 },
+      { side:  1, hipX:  0.14 * s, hipY: -0.76 * s + crouch, kneeX:  0.29 * s, kneeY: -0.40 * s, ankleX:  0.24 * s, ankleY: -0.16 * s, scale: 1.06, footRot:  0.07 }
+    ];
 
-  for (const lg of legs) {
-    cx.save();
-    const hipX = lg.side * 0.14 * s, hipY = -0.76 * s;
-    const strideY = lg.phase * 0.18 * s - lg.lift * 0.22 * s;
-    const scaleLeg = 1 + lg.phase * 0.15;
-
-    cx.translate(hipX, hipY);
-    cx.rotate(lg.phase * 0.30);
-
-    const legH = (0.58 * s) + strideY * 0.5;
-    // Pantalon techwear / shinobi
-    rr(-0.095 * s, 0, 0.19 * s, legH, 0.07 * s, isGuard ? '#162447' : hero.pants, '#0b0f19');
-
-    if (!isGuard) {
-      // Bande néon / armure genouillère
-      cx.fillStyle = hero.pantsStripe;
-      cx.fillRect(-0.075 * s, legH * 0.35, 0.15 * s, 0.05 * s);
-      // Genouillère mecha angulaire
-      rr(-0.085 * s, legH * 0.42, 0.17 * s, 0.14 * s, 0.04 * s, hero.jacketInner, '#0b0f19');
-    }
-
-    cx.translate(0, legH - 0.02 * s);
-    cx.scale(scaleLeg * (o.sn ? 1.35 : 1), scaleLeg * (o.sn ? 1.35 : 1));
-
-    // Baskets mecha futuristes
-    // Semelle épaisse amortissante
-    rr(-0.13 * s, 0.04 * s, 0.27 * s, 0.11 * s, 0.04 * s, '#0b0f19', '#000');
-    // Conduit lumineux néon dans la semelle
-    cx.fillStyle = o.sn ? '#00f5d4' : (isGuard ? '#3b82f6' : hero.sole);
-    cx.fillRect(-0.11 * s, 0.07 * s, 0.23 * s, 0.05 * s);
-
-    // Corps mecha de la basket
-    rr(-0.12 * s, -0.07 * s, 0.24 * s, 0.13 * s, 0.05 * s, isGuard ? '#1e293b' : hero.sneaker, '#0b0f19');
-    // Sangles / détails
-    cx.fillStyle = '#ffffff';
-    cx.fillRect(-0.06 * s, -0.06 * s, 0.12 * s, 0.04 * s);
-
-    // Ailes de propulsion Super Baskets (si actif)
-    if (o.sn) {
-      cx.fillStyle = '#00f5d4';
+    for (const sl of surfLegs) {
+      cx.save();
+      // Contours noirs cel-shaded de la cuisse et du tibia pliés
+      cx.lineCap = 'round';
+      cx.lineJoin = 'round';
+      cx.strokeStyle = '#0b0f19';
+      cx.lineWidth = 0.21 * s;
       cx.beginPath();
-      cx.moveTo(lg.side * 0.1 * s, -0.02 * s);
-      cx.lineTo(lg.side * 0.28 * s, -0.16 * s);
-      cx.lineTo(lg.side * 0.22 * s, 0.02 * s);
-      cx.closePath();
-      cx.fill();
+      cx.moveTo(sl.hipX, sl.hipY);
+      cx.lineTo(sl.kneeX, sl.kneeY);
+      cx.lineTo(sl.ankleX, sl.ankleY);
+      cx.stroke();
+
+      // Pantalon techwear / shinobi
+      cx.strokeStyle = hero.pants;
+      cx.lineWidth = 0.155 * s;
+      cx.beginPath();
+      cx.moveTo(sl.hipX, sl.hipY);
+      cx.lineTo(sl.kneeX, sl.kneeY);
+      cx.lineTo(sl.ankleX, sl.ankleY);
+      cx.stroke();
+
+      // Bande néon latérale du pantalon
+      cx.strokeStyle = hero.pantsStripe;
+      cx.lineWidth = 0.036 * s;
+      cx.beginPath();
+      cx.moveTo(sl.hipX + sl.side * 0.04 * s, sl.hipY + 0.04 * s);
+      cx.lineTo(sl.kneeX + sl.side * 0.04 * s, sl.kneeY);
+      cx.stroke();
+
+      // Genouillère mecha angulaire
+      rr(sl.kneeX - 0.095 * s, sl.kneeY - 0.075 * s, 0.19 * s, 0.15 * s, 0.045 * s, hero.jacketInner, '#0b0f19');
+
+      // Basket plantée sur le hoverboard
+      cx.translate(sl.ankleX, sl.ankleY);
+      cx.rotate(sl.footRot);
+      cx.scale(sl.scale * (o.sn ? 1.25 : 1), sl.scale * (o.sn ? 1.25 : 1));
+      rr(-0.13 * s, 0.04 * s, 0.27 * s, 0.11 * s, 0.04 * s, '#0b0f19', '#000');
+      cx.fillStyle = o.sn ? '#00f5d4' : hero.sole;
+      cx.fillRect(-0.11 * s, 0.07 * s, 0.23 * s, 0.05 * s);
+      rr(-0.12 * s, -0.07 * s, 0.24 * s, 0.13 * s, 0.05 * s, hero.sneaker, '#0b0f19');
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(-0.06 * s, -0.06 * s, 0.12 * s, 0.04 * s);
+      if (o.sn) {
+        cx.fillStyle = '#00f5d4';
+        cx.beginPath();
+        cx.moveTo(sl.side * 0.1 * s, -0.02 * s);
+        cx.lineTo(sl.side * 0.28 * s, -0.16 * s);
+        cx.lineTo(sl.side * 0.22 * s, 0.02 * s);
+        cx.closePath();
+        cx.fill();
+      }
+      cx.restore();
     }
-    cx.restore();
+  } else {
+    const legs = [
+      { side: -1, phase: sw, lift: Math.max(0, -cw) },
+      { side: 1,  phase: -sw, lift: Math.max(0, cw) }
+    ].sort((a, b) => a.phase - b.phase);
+
+    for (const lg of legs) {
+      cx.save();
+      const hipX = lg.side * 0.14 * s, hipY = -0.76 * s;
+      const strideY = lg.phase * 0.18 * s - lg.lift * 0.22 * s;
+      const scaleLeg = 1 + lg.phase * 0.15;
+
+      cx.translate(hipX, hipY);
+      cx.rotate(lg.phase * 0.30);
+
+      const legH = (0.58 * s) + strideY * 0.5;
+      // Pantalon techwear / shinobi
+      rr(-0.095 * s, 0, 0.19 * s, legH, 0.07 * s, isGuard ? '#162447' : hero.pants, '#0b0f19');
+
+      if (!isGuard) {
+        // Bande néon / armure genouillère
+        cx.fillStyle = hero.pantsStripe;
+        cx.fillRect(-0.075 * s, legH * 0.35, 0.15 * s, 0.05 * s);
+        // Genouillère mecha angulaire
+        rr(-0.085 * s, legH * 0.42, 0.17 * s, 0.14 * s, 0.04 * s, hero.jacketInner, '#0b0f19');
+      }
+
+      cx.translate(0, legH - 0.02 * s);
+      cx.scale(scaleLeg * (o.sn ? 1.35 : 1), scaleLeg * (o.sn ? 1.35 : 1));
+
+      // Baskets mecha futuristes
+      // Semelle épaisse amortissante
+      rr(-0.13 * s, 0.04 * s, 0.27 * s, 0.11 * s, 0.04 * s, '#0b0f19', '#000');
+      // Conduit lumineux néon dans la semelle
+      cx.fillStyle = o.sn ? '#00f5d4' : (isGuard ? '#3b82f6' : hero.sole);
+      cx.fillRect(-0.11 * s, 0.07 * s, 0.23 * s, 0.05 * s);
+
+      // Corps mecha de la basket
+      rr(-0.12 * s, -0.07 * s, 0.24 * s, 0.13 * s, 0.05 * s, isGuard ? '#1e293b' : hero.sneaker, '#0b0f19');
+      // Sangles / détails
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(-0.06 * s, -0.06 * s, 0.12 * s, 0.04 * s);
+
+      // Ailes de propulsion Super Baskets (si actif)
+      if (o.sn) {
+        cx.fillStyle = '#00f5d4';
+        cx.beginPath();
+        cx.moveTo(lg.side * 0.1 * s, -0.02 * s);
+        cx.lineTo(lg.side * 0.28 * s, -0.16 * s);
+        cx.lineTo(lg.side * 0.22 * s, 0.02 * s);
+        cx.closePath();
+        cx.fill();
+      }
+      cx.restore();
+    }
   }
 
   // 7. JETPACK DOUBLE
@@ -1306,26 +1392,29 @@ function runner(x, y, z, pal, o) {
     cx.save();
     for (const k of [-1, 1]) {
       const tx = k * 0.25 * s;
-      rr(tx - 0.1 * s, -1.48 * s, 0.2 * s, 0.6 * s, 0.06 * s, '#cbd5e1', '#0b0f19');
-      rr(tx - 0.1 * s, -1.32 * s, 0.2 * s, 0.12 * s, 0.02 * s, '#ff9f1c');
+      rr(tx - 0.1 * s, -1.48 * s + crouch, 0.2 * s, 0.6 * s, 0.06 * s, '#cbd5e1', '#0b0f19');
+      rr(tx - 0.1 * s, -1.32 * s + crouch, 0.2 * s, 0.12 * s, 0.02 * s, '#ff9f1c');
 
       const flH = (0.42 + Math.random() * 0.32) * s;
-      const grad = cx.createLinearGradient(tx, -0.88 * s, tx, -0.88 * s + flH);
+      const grad = cx.createLinearGradient(tx, -0.88 * s + crouch, tx, -0.88 * s + crouch + flH);
       grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.35, '#ffd23f'); grad.addColorStop(1, '#ff3864');
       cx.fillStyle = grad;
-      cx.beginPath(); cx.moveTo(tx - 0.09 * s, -0.88 * s); cx.lineTo(tx, -0.88 * s + flH); cx.lineTo(tx + 0.09 * s, -0.88 * s); cx.closePath(); cx.fill();
+      cx.beginPath(); cx.moveTo(tx - 0.09 * s, -0.88 * s + crouch); cx.lineTo(tx, -0.88 * s + crouch + flH); cx.lineTo(tx + 0.09 * s, -0.88 * s + crouch); cx.closePath(); cx.fill();
 
-      if (Math.random() < Math.min(1, 24 * frameDt)) burst(q[0] + tx, q[1] - 0.88 * s + flH, 1, '#ff9f1c', 1.2, 0.3);
+      if (Math.random() < Math.min(1, 24 * frameDt)) burst(q[0] + tx, q[1] - bob - 0.88 * s + crouch + flH, 1, '#ff9f1c', 1.2, 0.3);
     }
     cx.restore();
   }
 
-  // 8. BRAS & ACCESSOIRES (Gants de combat tactiques)
+  // 8. BRAS & ACCESSOIRES (Équilibre surf sur Hoverboard OU balancier de course)
   for (const k of [-1, 1]) {
     cx.save();
     const armPhase = -sw * k;
-    cx.translate(k * 0.31 * s, -1.38 * s);
-    cx.rotate(armPhase * 0.55 + k * 0.12);
+    cx.translate(k * 0.31 * s, -1.38 * s + crouch);
+    const armRot = isSurfing
+      ? (-k * 0.72 - (o.tilt || 0) * 0.65 + Math.sin(tt * 6.5 + k) * 0.07)
+      : (armPhase * 0.55 + k * 0.12);
+    cx.rotate(armRot);
 
     const armSleeveCol = isGuard ? '#1b2a49' : hero.jacket;
     const armAccentCol = isGuard ? '#ffd23f' : hero.jacketAccent;
@@ -1352,18 +1441,18 @@ function runner(x, y, z, pal, o) {
     cx.fillStyle = '#ffd23f'; cx.fillRect(-0.31 * s, -0.84 * s, 0.62 * s, 0.08 * s);
   } else {
     // Veste techwear principale
-    rr(-0.29 * s, -1.48 * s, 0.58 * s, 0.74 * s, 0.13 * s, hero.jacket, '#0b0f19');
+    rr(-0.29 * s, -1.48 * s + crouch, 0.58 * s, 0.74 * s, 0.13 * s, hero.jacket, '#0b0f19');
     // Plastron / Col montant intérieur
-    rr(-0.24 * s, -1.46 * s, 0.48 * s, 0.62 * s, 0.09 * s, hero.jacketInner);
+    rr(-0.24 * s, -1.46 * s + crouch, 0.48 * s, 0.62 * s, 0.09 * s, hero.jacketInner);
     // Liserés d'énergie néon verticaux
     cx.fillStyle = hero.jacketAccent;
-    cx.fillRect(-0.18 * s, -1.46 * s, 0.035 * s, 0.65 * s);
-    cx.fillRect(0.145 * s, -1.46 * s, 0.035 * s, 0.65 * s);
+    cx.fillRect(-0.18 * s, -1.46 * s + crouch, 0.035 * s, 0.65 * s);
+    cx.fillRect(0.145 * s, -1.46 * s + crouch, 0.035 * s, 0.65 * s);
     // Ceinture mecha avec boucle
     cx.fillStyle = '#0b0f19';
-    cx.fillRect(-0.29 * s, -0.88 * s, 0.58 * s, 0.08 * s);
+    cx.fillRect(-0.29 * s, -0.88 * s + crouch, 0.58 * s, 0.08 * s);
     cx.fillStyle = hero.jacketAccent;
-    cx.fillRect(-0.06 * s, -0.89 * s, 0.12 * s, 0.10 * s);
+    cx.fillRect(-0.06 * s, -0.89 * s + crouch, 0.12 * s, 0.10 * s);
 
     // Emblème Kanji dans le dos
     cx.save();
@@ -1371,16 +1460,18 @@ function runner(x, y, z, pal, o) {
     cx.textAlign = 'center';
     cx.textBaseline = 'middle';
     cx.fillStyle = hero.jacketAccent;
-    cx.shadowColor = hero.jacketAccent;
-    cx.shadowBlur = 8;
-    cx.fillText(hero.kanji, 0, -1.18 * s);
+    if (graphicsQuality !== 'eco') {
+      cx.shadowColor = hero.jacketAccent;
+      cx.shadowBlur = 8;
+    }
+    cx.fillText(hero.kanji, 0, -1.18 * s + crouch);
     cx.restore();
   }
 
   // 10. TÊTE, BANDEAU SHINOBI & COIFFURE ANIME 3D MULTI-COUCHES
-  const headOsc = Math.sin(cyc * 0.5) * 0.04;
+  const headOsc = isSurfing ? Math.sin(tt * 6.5) * 0.025 : Math.sin(cyc * 0.5) * 0.04;
   cx.save();
-  cx.translate(0, -1.74 * s);
+  cx.translate(0, -1.74 * s + crouch);
   cx.rotate(headOsc);
 
   if (isGuard) {
@@ -3202,9 +3293,9 @@ const startAmbientOnInteraction = () => {
 };
 window.addEventListener('pointerdown', startAmbientOnInteraction, { once: true });
 
-// Service Worker v8 avec Network-First pour éliminer le cache obsolète sur Chrome Mobile
+// Service Worker v8.1 avec Network-First pour éliminer le cache obsolète sur Chrome Mobile
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=8.0')
+  navigator.serviceWorker.register('sw.js?v=8.1')
     .then(reg => {
       if (reg.update) reg.update();
     })
